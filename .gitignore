@@ -1,0 +1,8 @@
+.venv_1688
+__pycache__
+*.jpg
+*.html
+*.json
+.env
+*.jpeg
+*.gif
