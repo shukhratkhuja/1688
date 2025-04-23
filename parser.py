@@ -1,5 +1,5 @@
 import bs4, re, json
-from media_downloader import dowload_file
+from utils.media_downloader import dowload_file
 
 
 def get_left_gallery_image(outer_dom):
@@ -11,7 +11,7 @@ def get_left_gallery_image(outer_dom):
             if lg_image.get("class") == ["detail-gallery-turn-wrapper"]:
                 dg_image_url = lg_image.find("img", class_="detail-gallery-img")
                 img_link_list.append(dg_image_url["src"])
-                print("URL", dg_image_url)
+                # print("URL", dg_image_url)
     
     return img_link_list
 
@@ -39,14 +39,8 @@ def get_details(outer_dom):
     text_details = []
     img_details = []
 
-    details_dom = outer_dom.find("div", class_ = "detail-desc-module")
-    
-    detail_notice = details_dom.find("div", id="detail-notice-contanier-top")
-    detail_notice_dom = detail_notice.find("img") if detail_notice else None
-    detail_notice_img_url = detail_notice_dom["src"] if detail_notice_dom else None 
-    # print(detail_notice_img)
+    all_details_dom = outer_dom.find("div", class_="content-detail")
 
-    all_details_dom = details_dom.find("div", class_="content-detail")
     all_details = all_details_dom.find_all("p") if all_details_dom else None
     if all_details:
         for detail in all_details:
@@ -69,7 +63,7 @@ def get_details(outer_dom):
             img_details.append(detail_img_url) if "?" in detail_img_url else None
         # print(detail.text)
     
-    return detail_notice_img_url, text_details, img_details
+    return text_details, img_details
 
 
 
@@ -86,23 +80,12 @@ def parser(html_text):
 
     offer_attrs = get_offer_attrs(outer_dom=main_dom)
     
-    detail_notice_img_url, text_details, img_details = get_details(outer_dom=main_dom)
-    
-    product_data["title"] = title
+    text_details, img_details = get_details(outer_dom=main_dom)
+
+    product_data["title_chn"] = title
     product_data["gallery_images"] = lg_images
-    product_data["product_attributes"] = offer_attrs
-    product_data["detail_notice_img_url"] = detail_notice_img_url
-    product_data["text_details"] = text_details
+    product_data["product_attributes_chn"] = offer_attrs
+    product_data["text_details_chn"] = text_details
     product_data["img_details"] = img_details
 
     return product_data
-
-
- 
-# html_text = open("735430314845.html", 'r').read()
-
-# data = parser(html_text=html_text)
-# with open("product_data.json", "w", encoding="utf-8") as f:
-#     json.dump(data, f, ensure_ascii=False, indent=2)
-    
-# print(json.dumps(data))

@@ -26,20 +26,20 @@ def remove_excluded_keys(data):
 def build_prompt(entry):
     filtered_entry = remove_excluded_keys(entry)
     return f"""
-You are a professional e-commerce translator.
+            You are a professional e-commerce translator.
 
-Translate the following product data from Chinese to English.
+            Translate the following product data from Chinese to English.
 
-Instructions:
-- Translate both keys and values in the JSON.
-- Use proper e-commerce terminology.
-- Keep the structure exactly the same.
-- Do not add or remove fields.
-- Return valid JSON.
+            Instructions:
+            - Translate both keys and values in the JSON.
+            - Use proper e-commerce terminology.
+            - Keep the structure exactly the same.
+            - Do not add or remove fields.
+            - Return valid data format as input format.
 
-Input:
-{json.dumps(filtered_entry, ensure_ascii=False, indent=2)}
-"""
+            Input:
+            {json.dumps(filtered_entry, ensure_ascii=False, indent=2)}
+            """
 
 def translate_entry(entry):
     try:

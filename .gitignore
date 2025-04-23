@@ -6,3 +6,6 @@ __pycache__
 .env
 *.jpeg
 *.gif
+log/
+/log
+mycreds.txt

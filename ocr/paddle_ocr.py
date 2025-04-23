@@ -1,45 +1,39 @@
 from paddleocr import PaddleOCR
 from PIL import Image
 
-# 1. OCR modelini yaratamiz
-# ocr = PaddleOCR(use_angle_cls=True, lang='ch')  # 'ch' for Chinese
-
-# 2. Test qilish uchun rasm yo'lini belgilang
-
-# 3. OCRni ishga tushiramiz
-# results = ocr.ocr(image_path, cls=True)
-
-# 4. Natijani chiqaramiz
-from paddleocr import PaddleOCR
-
-ocr = PaddleOCR(use_angle_cls=True, lang='ch')
-result = ocr.ocr(image_path, cls=True)
-
-# Yig'ilgan bloklar: (text, y_center, x_start)
-blocks = []
-for line in result:
-    for word_info in line:
-        box = word_info[0]
-        text = word_info[1][0]
-        y_center = sum([point[1] for point in box]) / 4
-        x_start = min([point[0] for point in box])
-        blocks.append((text, y_center, x_start))
-
-# Avval y (qator) bo‘yicha sort, keyin har qator ichida x bo‘yicha
-blocks.sort(key=lambda b: (round(b[1] / 10), b[2]))  # y ni 10 pikselgacha yaqinlashtiramiz
-
-# Chop etamiz
-print("Detected text blocks in order:")
-for text, _, _ in blocks:
-    print(text)
+from pytsrct_ocr import is_text_present
 
 
+def extract_text(image_path):
 
+    if not is_text_present(image_path=image_path):
+        return None
+    
+    # 1. creating OCR 
+    ocr = PaddleOCR(use_angle_cls=True, lang='ch')  # 'ch' for Chinese
 
+    # 3. starting OCR 
+    results = ocr.ocr(image_path, cls=True)
 
+    # Gathered blocks: (text, y_center, x_start)
+    blocks = []
+    for line in results:
+        for word_info in line:
+            box = word_info[0]
+            text = word_info[1][0]
+            y_center = sum([point[1] for point in box]) / 4
+            x_start = min([point[0] for point in box])
+            blocks.append((text, y_center, x_start))
 
+    # First sort by y (column), then by x for each row
+    blocks.sort(key=lambda b: (round(b[1] / 10), b[2]))  # get closer till 10 pxs
+    
+    text_list = []
+    # Detected text blocks in order
+    for text, _, _ in blocks:
+        text_list.append(text)
 
-
+    return text_list
 
 
 """
