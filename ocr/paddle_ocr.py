@@ -1,7 +1,11 @@
 from paddleocr import PaddleOCR
-from PIL import Image
+import json, os
+import sys, time
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from pytsrct_ocr import is_text_present
+from ocr.pytsrct_ocr import is_text_present
+from utils.db_utils import update_row
+from utils.constants import DB_NAME, TABLE_PRODUCT_IMAGES, LOCAL_IMAGES_FOLDER
 
 
 def extract_text(image_path):
@@ -35,6 +39,26 @@ def extract_text(image_path):
 
     return text_list
 
+
+def main(img_details):
+
+    for image_url, image_filename in img_details:
+        
+        image_path = os.path.join(LOCAL_IMAGES_FOLDER, image_filename)
+        text_list = extract_text(image_path=image_path)
+
+        update_row(
+            db=DB_NAME,
+            table=TABLE_PRODUCT_IMAGES,
+            column_with_value=[
+                ("image_text_chn", json.dumps(text_list) if text_list else None),
+                ("text_extracted_status", "1")
+                ],
+            where=[
+                ("image_url","=",image_url)
+                ]
+        )
+        time.sleep(0.5)
 
 """
 # So'zlarni (text, y_middle) formatida yig'amiz

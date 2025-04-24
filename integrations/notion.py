@@ -1,19 +1,13 @@
 import requests
 import os, json
-from dotenv import load_dotenv
-
 
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.log_config import get_logger
 from notion_client import Client
+from utils.constants import NOTION_BEARER_TOKEN, NOTION_DB_ID
 
-
-load_dotenv()
-
-NOTION_BEARER_TOKEN = os.getenv("NOTION_BEARER_TOKEN", "gasdfasdfasfd")
-NOTION_DB_ID = os.getenv("NOTION_URLS_DB_ID", "urls_db")
 
 logger = get_logger("notion", "app.log")
 notion = Client(auth=NOTION_BEARER_TOKEN)

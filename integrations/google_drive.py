@@ -1,11 +1,31 @@
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 
+import sys, time, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from utils.log_config import get_logger
+
+logger = get_logger("GD", "app.log")
 
 def get_drive():
         # Auth
     gauth = GoogleAuth()
+    # gauth.LoadClientConfigFile("client_secrets.json")
+
     gauth.LoadCredentialsFile("mycreds.txt")
+
+    if gauth.access_token_expired:
+        gauth.Refresh()
+    else:
+        gauth.Authorize()
+
+    gauth.GetFlow()
+    gauth.flow.params.update({
+        'access_type': 'offline',
+        'prompt': 'consent',
+    })
+
 
     if gauth.credentials is None:
         gauth.LocalWebserverAuth()
@@ -21,7 +41,6 @@ def get_drive():
     return drive
 
 
-
 def get_or_create_folder(folder_name):
 
     drive = get_drive()
@@ -30,7 +49,7 @@ def get_or_create_folder(folder_name):
     folder_list = drive.ListFile({'q': query}).GetList()
 
     if folder_list:
-        print(f"📁 Folder '{folder_name}' already exists.")
+        logger.info(f"📁 Folder '{folder_name}' already exists.")
         return folder_list[0]['id']
     
     # 2. Creating the folder
@@ -40,7 +59,7 @@ def get_or_create_folder(folder_name):
     }
     folder = drive.CreateFile(folder_metadata)
     folder.Upload()
-    print(f"✅ Folder '{folder_name}' created.")
+    logger.info(f"✅ Folder '{folder_name}' created.")
     return folder['id']
 
 
@@ -119,14 +138,12 @@ def upload_image_if_not_exists(images_folder_id, local_image_path):
 
     file.InsertPermission({'type': 'anyone', 'value': 'anyone', 'role': 'reader'})
 
-    print(f"✅ Image '{filename}' uploaded.")
+    logger.info(f"✅ Image '{filename}' uploaded.")
     return f"https://drive.google.com/uc?export=download&id={file['id']}"
 
 
 def upload_to_drive_and_get_link(gd_main_folder_id, local_filepath):
 
-    drive = get_drive()
-
-    direct_link = upload_or_update_file(drive=drive, folder_id=gd_main_folder_id, local_file_path=local_filepath)
+    direct_link = upload_or_update_file(folder_id=gd_main_folder_id, local_file_path=local_filepath)
     
     return direct_link

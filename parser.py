@@ -1,6 +1,4 @@
 import bs4, re, json
-from utils.media_downloader import dowload_file
-
 
 def get_left_gallery_image(outer_dom):
     img_link_list = []
@@ -44,23 +42,23 @@ def get_details(outer_dom):
     all_details = all_details_dom.find_all("p") if all_details_dom else None
     if all_details:
         for detail in all_details:
-            detail_img = detail.find_all("img")
-            if detail_img:
-                for dimg in detail_img:
-
-                    detail_img_url = dimg["data-lazyload-src"] if dimg else None
-                    img_details.append(detail_img_url)  if "?" in detail_img_url else None
-                    # print(detail_img_url)
+            detail_img = detail.find("img")
+            if detail_img:                
+                detail_img_url = detail_img["data-lazyload-src"] if detail_img else None
+                img_details.append(detail_img_url)  if "?" in detail_img_url else None
+                # print(detail_img_url)
             
             text_detail = detail.text.strip()
             if text_detail and text_detail != "":
                 text_details.append(text_detail)
     
-    all_detail_images = all_details_dom.find_all("img", class_="desc-img-loaded") if all_details_dom else None
+
+    all_detail_images = all_details_dom.find_all("img", class_="desc-img-no-load") if all_details_dom else None
+    # print(all_detail_images)
     if all_detail_images:
         for detail_img in all_detail_images:
-            detail_img_url = detail_img["src"] if detail_img else None
-            img_details.append(detail_img_url) if "?" in detail_img_url else None
+            detail_img_url = detail_img["data-lazyload-src"] if detail_img else None
+            img_details.append(detail_img_url)
         # print(detail.text)
     
     return text_details, img_details
@@ -89,3 +87,13 @@ def parser(html_text):
     product_data["img_details"] = img_details
 
     return product_data
+
+
+# def main():
+#     with open("page_source/current_page.html") as f:
+#             html = f.read()
+#             parsed_data = parser(html)
+#             print(parsed_data)
+
+
+# main()
