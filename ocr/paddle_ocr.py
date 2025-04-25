@@ -14,7 +14,7 @@ def extract_text(image_path):
         return None
     
     # 1. creating OCR 
-    ocr = PaddleOCR(use_angle_cls=True, lang='ch')  # 'ch' for Chinese
+    ocr = PaddleOCR(use_angle_cls=True, lang='ch', use_space_char=True)  # 'ch' for Chinese
 
     # 3. starting OCR 
     results = ocr.ocr(image_path, cls=True)
@@ -40,61 +40,92 @@ def extract_text(image_path):
     return text_list
 
 
+def extract_line_by_line(image_path):
+
+    if not is_text_present(image_path=image_path):
+        return None
+
+    # 1. creating OCR 
+    ocr = PaddleOCR(use_angle_cls=True, lang='ch')  # 'ch' for Chinese
+
+    # 3. starting OCR 
+    results = ocr.ocr(image_path, cls=True)
+    print(results)
+    # So'zlarni (text, y_middle) formatida yig'amiz
+    words = []
+    for line in results:
+        for word_info in line:
+            box = word_info[0]
+            text = word_info[1][0]
+            # Bounding boxdagi y koordinatalarni o'rtachasi
+            y_coords = [point[1] for point in box]
+            y_center = sum(y_coords) / len(y_coords)
+            words.append((text, y_center))
+
+    # Qatorlarni aniqlaymiz: y_center bo‘yicha sort qilamiz
+    words.sort(key=lambda x: x[1])
+
+    # Qatordagi so‘zlar orasidagi maksimal y_farq
+    line_threshold = 10  # kerak bo‘lsa sozlash mumkin
+
+    lines = []
+    current_line = []
+    prev_y = None
+
+    for text, y in words:
+        if prev_y is None or abs(y - prev_y) < line_threshold:
+            current_line.append(text)
+        else:
+            try:
+                lines.append(' '.join(current_line))
+                current_line = [text]
+            except:
+                time.sleep(100)
+        prev_y = y
+
+    # Oxirgi qatorni ham qo‘shamiz
+    if current_line:
+        try:
+            lines.append(' '.join(current_line))
+        except:
+            time.sleep(199)
+    # Chop etamiz
+    for idx, line in enumerate(lines):
+        print(f"Line {idx + 1}: {line}")
+    
+    return lines
+
+
 def main(img_details):
 
     for image_url, image_filename in img_details:
-        
+        print(LOCAL_IMAGES_FOLDER)
+        print(image_filename)
         image_path = os.path.join(LOCAL_IMAGES_FOLDER, image_filename)
-        text_list = extract_text(image_path=image_path)
+        text_list = extract_line_by_line(image_path=image_path)
 
-        update_row(
-            db=DB_NAME,
-            table=TABLE_PRODUCT_IMAGES,
-            column_with_value=[
-                ("image_text_chn", json.dumps(text_list) if text_list else None),
-                ("text_extracted_status", "1")
-                ],
-            where=[
-                ("image_url","=",image_url)
-                ]
-        )
+        if text_list:
+            update_row(
+                db=DB_NAME,
+                table=TABLE_PRODUCT_IMAGES,
+                column_with_value=[
+                    ("image_text", json.dumps(text_list, ensure_ascii=False) if text_list else None),
+                    ("text_extracted_status", "1")
+                    ],
+                where=[
+                    ("image_url","=",image_url)
+                    ]
+            )
+        else:
+            update_row(
+                db=DB_NAME,
+                table=TABLE_PRODUCT_IMAGES,
+                column_with_value=[
+                    ("text_extracted_status", "1")
+                    ],
+                where=[
+                    ("image_url","=",image_url)
+                    ]
+            )
+
         time.sleep(0.5)
-
-"""
-# So'zlarni (text, y_middle) formatida yig'amiz
-words = []
-for line in result:
-    for word_info in line:
-        box = word_info[0]
-        text = word_info[1][0]
-        # Bounding boxdagi y koordinatalarni o'rtachasi
-        y_coords = [point[1] for point in box]
-        y_center = sum(y_coords) / len(y_coords)
-        words.append((text, y_center))
-
-# Qatorlarni aniqlaymiz: y_center bo‘yicha sort qilamiz
-words.sort(key=lambda x: x[1])
-
-# Qatordagi so‘zlar orasidagi maksimal y_farq
-line_threshold = 10  # kerak bo‘lsa sozlash mumkin
-
-lines = []
-current_line = []
-prev_y = None
-
-for text, y in words:
-    if prev_y is None or abs(y - prev_y) < line_threshold:
-        current_line.append(text)
-    else:
-        lines.append(' '.join(current_line))
-        current_line = [text]
-    prev_y = y
-
-# Oxirgi qatorni ham qo‘shamiz
-if current_line:
-    lines.append(' '.join(current_line))
-
-# Chop etamiz
-for idx, line in enumerate(lines):
-    print(f"Line {idx + 1}: {line}")
-"""

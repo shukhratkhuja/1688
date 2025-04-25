@@ -11,13 +11,17 @@ from parser import parser
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+
 from utils.db_utils import update_row, insert_many
 from utils.log_config import get_logger
 from utils.constants import (DB_NAME, 
                               TABLE_PRODUCT_DATA, 
                               TABLE_PRODUCT_IMAGES, 
                               TABLE_PRODUCT_URLS,
-                              LOCAL_OUTPUT_FOLDER
+                              LOCAL_OUTPUT_FOLDER,
+                              OXYLABS_USERNAME,
+                              OXYLABS_PASSWORD,
+                              OXYLABS_ENDPOINT
                             )
 
 logger = get_logger("scraper", "app.log")
@@ -39,12 +43,23 @@ def get_optimized_driver(headless=False):
     options.add_argument('--disable-features=VizDisplayCompositor')
     if headless:
         options.add_argument('--headless=new')
+
+    # oxylab proxy
+
+    entry = ('http://customer-%s-cc-CN:%s@pr.oxylabs.io:7777' %
+        (OXYLABS_USERNAME, OXYLABS_PASSWORD))
+
+    options.add_argument(f'--proxy-server={entry}')
+
     driver = uc.Chrome(options=options)
     logger.info("Get driver")
     return driver
 
 
 def scrape(driver, url):
+
+
+    logger.info("🌐 IP ADDRESS: ", )
     
     driver.get(url)
     time.sleep(2)
@@ -127,20 +142,17 @@ def main(product_urls, gd_main_folder_id):
         product_images = gallery_images + img_details
 
         # inserting scraped data to db
-        insert_many(
+        update_row(
             db=DB_NAME,
             table=TABLE_PRODUCT_DATA,
-            columns_list=["product_url",
-                          "title_chn",
-                          "product_attributes_chn",
-                          "text_details_chn"
-                          ],
-            data=[(
-                product_url,
-                title_chn,
-                json.dumps(product_attributes_chn),
-                json.dumps(text_details_chn),
-            )],
+            column_with_value=[
+                ("title_chn", title_chn),
+                ("product_attributes_chn", json.dumps(product_attributes_chn,  ensure_ascii=False)),
+                ("text_details_chn", json.dumps(text_details_chn,  ensure_ascii=False)),
+            ],
+            where=[
+                ("product_url", "=", product_url)
+                ],
             logger=logger
         )
 
@@ -154,10 +166,10 @@ def main(product_urls, gd_main_folder_id):
             logger=logger
         )
         # update scraped status on product_urls table
-        print(product_url)
+        # print(product_url)
         update_row(
             db=DB_NAME,
-            table=TABLE_PRODUCT_URLS,
+            table=TABLE_PRODUCT_DATA,
             column_with_value=[
                 ("scraped_status", "1",)
                 ],

@@ -22,3 +22,8 @@ TRANSLATION_MODEL=os.getenv("TRANSLATION_MODEL", "gpt-3.5-turbo")
 OPENAI_API_KEY=os.getenv("OPENAI_API_KEY", "default_openai_token")
 NOTION_BEARER_TOKEN=os.getenv("NOTION_BEARER_TOKEN", "default_notion_token")
 NOTION_DB_ID=os.getenv("NOTION_DB_ID", "default_db_id")
+
+# oxylabs
+OXYLABS_USERNAME=os.getenv("OXYLABS_USERNAME", "oxylabs_username")
+OXYLABS_PASSWORD=os.getenv("OXYLABS_PASSWORD", "oxylabs_password")
+OXYLABS_ENDPOINT=os.getenv("OXYLABS_ENDPOINT", "pr.oxylabs.io:7777")

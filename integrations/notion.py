@@ -9,11 +9,10 @@ from notion_client import Client
 from utils.constants import NOTION_BEARER_TOKEN, NOTION_DB_ID
 
 
-logger = get_logger("notion", "app.log")
-notion = Client(auth=NOTION_BEARER_TOKEN)
-
-notion_product_id = ""
 def get_urls():
+
+    logger = get_logger("notion", "app.log")
+    notion = Client(auth=NOTION_BEARER_TOKEN)
     
     # taking first 100 urls from db where "CLEARED FOR SCRAPE" checkbox True
     try:
@@ -61,25 +60,28 @@ def get_urls():
         notion_product_id = resp["id"]
         primary_supplier_url = resp["properties"]["PRIMARY SUPPLIER "]["url"]
         data_collection.append((primary_supplier_url, notion_product_id))
-    
+    logger.info(f"❇️ Coming {len(data_collection)} new product_urls.")
     return data_collection 
         
         
-def update_json_content(notion, page_id, drive_file_id):
-    direct_url = f"https://drive.google.com/uc?export=download&id={drive_file_id}"
+def notion_update_json_content(page_id, gd_file_url):
+
+    logger = get_logger("notion", "app.log")
+    notion = Client(auth=NOTION_BEARER_TOKEN)
 
     notion.pages.update(
         page_id=page_id,
         properties={
-            "1668 JASON FILE": {
+            "LINK TO 1688JASON FILE": {
                 "files": [
                     {
                         "name": "product_data.json",
                         "external": {
-                            "url": direct_url
+                            "url": gd_file_url
                         }
                     }
                 ]
             }
         }
     )
+    logger.info(f"{page_id} page json data update with file {gd_file_url}")

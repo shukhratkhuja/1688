@@ -218,7 +218,7 @@ def fetch_many(
     def build_where_clause(where: List[Tuple[str, str, str]]) -> str:
         clauses = []
         for column, operator, value in where:
-            if "::" in value:
+            if "::" in value or value.upper() == "NULL":
                 clause = f"{column} {operator} {value}"
             else:
                 clause = f"{column} {operator} '{value}'"

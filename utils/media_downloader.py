@@ -4,11 +4,12 @@ import time
 import os
 from integrations.google_drive import upload_image_if_not_exists
 import sys
+import random
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.log_config import get_logger
 from utils.db_utils import insert_many, update_row
-from utils.constants import DB_NAME, TABLE_PRODUCT_IMAGES, LOCAL_IMAGES_FOLDER
+from utils.constants import DB_NAME, TABLE_PRODUCT_IMAGES, LOCAL_IMAGES_FOLDER, LOCAL_OUTPUT_FOLDER
 
 logger = get_logger("image download", "app.log")
 
@@ -26,16 +27,18 @@ def download_file(img_url, base_file_path, gd_images_folder_id):
     
         response = requests.get(img_url)
         img_filename = decode_filename(img_url)
+
+        print(response.status_code)
     
         if response.status_code == 200:
 
             with open(f"{base_file_path}/{img_filename}", "wb") as f:
                 f.write(response.content)
-            logger.info(f"✅ File saved: {img_filename}. URL: {img_url}")
+                logger.info(f"✅ File saved: {img_filename}. URL: {img_url}")
             
             gd_image_id = upload_image_if_not_exists(images_folder_id=gd_images_folder_id, 
                                                      local_image_path=f"{base_file_path}/{img_filename}")
-
+            
             update_row(
                 db=DB_NAME,
                 table=TABLE_PRODUCT_IMAGES,
@@ -54,10 +57,14 @@ def download_file(img_url, base_file_path, gd_images_folder_id):
 
 def download_images(image_urls_list, gd_images_folder_id):
     
-    os.makedirs(LOCAL_IMAGES_FOLDER, exist_ok=True)
+    images_output_folder = os.path.join(LOCAL_OUTPUT_FOLDER, LOCAL_IMAGES_FOLDER)
+    os.makedirs(images_output_folder, exist_ok=True)
     # coming img_urls_list as list of tuples like [(img_url), ]
     for img_url in image_urls_list:
+        sleep_time = random.randint(30,99) * 0.1
         # download single image
         img_url = img_url[0]
         download_file(img_url=img_url, base_file_path=LOCAL_IMAGES_FOLDER, gd_images_folder_id=gd_images_folder_id)
-        time.sleep(3)
+        
+        logger.info(f"Sleep time while blocking: {sleep_time}")
+        time.sleep(sleep_time)
