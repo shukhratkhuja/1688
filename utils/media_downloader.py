@@ -9,7 +9,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.log_config import get_logger
 from utils.db_utils import insert_many, update_row
-from utils.constants import DB_NAME, TABLE_PRODUCT_IMAGES, LOCAL_IMAGES_FOLDER, LOCAL_OUTPUT_FOLDER
+from utils.constants import (DB_NAME, 
+                             TABLE_PRODUCT_IMAGES, 
+                             LOCAL_IMAGES_FOLDER, 
+                             LOCAL_OUTPUT_FOLDER,
+                             OXYLABS_USERNAME,
+                             OXYLABS_PASSWORD,
+                             OXYLABS_ENDPOINT
+
+                            )
 
 logger = get_logger("image download", "app.log")
 
@@ -24,8 +32,35 @@ def decode_filename(image_url):
 def download_file(img_url, base_file_path, gd_images_folder_id):
 
     if img_url:
+
+        entry = entry = ('http://customer-%s-cc-CN:%s@%s' %
+            (OXYLABS_USERNAME, OXYLABS_PASSWORD, OXYLABS_ENDPOINT))
+
+        proxies = {
+            "http": entry,
+            "https": entry
+        }
+        print(proxies)
+        # proxies={}
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Referer": "https://www.1688.com/"
+        }
+        proxies = {}
+        session = requests.Session()
+        session.proxies = proxies
     
-        response = requests.get(img_url)
+        session.headers.update(headers)
+
+        response = session.get(img_url)
+        if "rgv587_flag" in response.text:
+            print("CAPTCHA chiqdi yoki kutish kerak!")
+        else:
+            with open("image.jpg", "wb") as f:
+                f.write(response.content)
+        
         img_filename = decode_filename(img_url)
 
         print(response.status_code)

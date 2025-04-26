@@ -12,7 +12,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
-from utils.db_utils import update_row, insert_many
+from utils.db_utils import update_row, insert_many, fetch_many
 from utils.log_config import get_logger
 from utils.constants import (DB_NAME, 
                               TABLE_PRODUCT_DATA, 
@@ -46,10 +46,10 @@ def get_optimized_driver(headless=False):
 
     # oxylab proxy
 
-    entry = ('http://customer-%s-cc-CN:%s@pr.oxylabs.io:7777' %
-        (OXYLABS_USERNAME, OXYLABS_PASSWORD))
+    # entry = ('http://customer-%s-cc-CN:%s@pr.oxylabs.io:7777' %
+    #     (OXYLABS_USERNAME, OXYLABS_PASSWORD))
 
-    options.add_argument(f'--proxy-server={entry}')
+    # options.add_argument(f'--proxy-server={entry}')
 
     driver = uc.Chrome(options=options)
     logger.info("Get driver")
@@ -58,8 +58,7 @@ def get_optimized_driver(headless=False):
 
 def scrape(driver, url):
 
-
-    logger.info("🌐 IP ADDRESS: ", )
+    # logger.info("🌐 IP ADDRESS: ", )
     
     driver.get(url)
     time.sleep(2)
@@ -70,8 +69,12 @@ def scrape(driver, url):
         )
     except:
         logger.warning(f"Bad URL! No title-text found in {url}")
-        return None
-    
+        try:
+            driver.find_element("xpath", "//h3[contains(text(), '商品已下架')]")
+            logger.warning("⚠️ Element removed from the site!")
+            return 404
+        except:        
+            return None
     try:
         WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'content-detail')]"))
@@ -114,8 +117,20 @@ def main(product_urls, gd_main_folder_id):
         json_filename = extract_offer_id(url=product_url)
 
         is_scraped = scrape(driver, product_url)
-
-        if not is_scraped:
+        if is_scraped == 404:
+            update_row(
+            db=DB_NAME,
+            table=TABLE_PRODUCT_DATA,
+            column_with_value=[
+                ("scraped_status", "1"),
+                ("translated_status", "1"),
+                ("title_chn", "404"),
+                ],
+            where=[("product_url", "=", product_url)],
+            logger=logger
+            )
+            continue
+        elif not is_scraped:
            continue 
 
         parsed_data = None
@@ -129,9 +144,9 @@ def main(product_urls, gd_main_folder_id):
         logger.info("Moved to next loop...")
         time.sleep(1)
 
-        output_filepath = os.path.join(LOCAL_OUTPUT_FOLDER, f"{json_filename}.json")
-        with open(output_filepath, "w", encoding="utf-8") as f:
-            json.dump(parsed_data, f, ensure_ascii=False, indent=2)
+        # output_filepath = os.path.join(LOCAL_OUTPUT_FOLDER, f"{json_filename}.json")
+        # with open(output_filepath, "w", encoding="utf-8") as f:
+        #     json.dump(parsed_data, f, ensure_ascii=False, indent=2)
         
         title_chn = parsed_data["title_chn"] if parsed_data else None
         product_attributes_chn = parsed_data["product_attributes_chn"] if parsed_data else None
@@ -139,6 +154,7 @@ def main(product_urls, gd_main_folder_id):
         text_details_chn = parsed_data["text_details_chn"] if parsed_data else None
         img_details = parsed_data["img_details"] if parsed_data else None
 
+        # parsed images
         product_images = gallery_images + img_details
 
         # inserting scraped data to db
@@ -156,17 +172,68 @@ def main(product_urls, gd_main_folder_id):
             logger=logger
         )
 
-        # inserting product images to db
-        image_details = [(product_url, img_url) for img_url in product_images]
-        insert_many(
-            db=DB_NAME,
-            table=TABLE_PRODUCT_IMAGES,
-            columns_list=["product_url","image_url"],
-            data=image_details,
-            logger=logger
-        )
+        # inserting product images to db if not exists else add and update with current product id
+        if product_images:
+            existing_images = fetch_many(
+                db=DB_NAME,
+                table=TABLE_PRODUCT_IMAGES,
+                columns_list=["image_url", 
+                            "image_filename",
+                            "image_text",
+                            "image_text_en",
+                            "downloaded_status",
+                            "text_extracted_status",
+                            "text_translated_status",
+                            "product_url",
+                            "gd_img_url"]
+            )
+            existing_image_urls = [row[0] for row in existing_images]
+
+            image_details = [(product_url, img_url) for img_url in product_images]
+            for product_url, img_url in image_details:
+                if img_url not in existing_image_urls:
+                    insert_many(
+                        db=DB_NAME,
+                        table=TABLE_PRODUCT_IMAGES,
+                        columns_list=["product_url","image_url"],
+                        data=[(product_url, img_url)],
+                        logger=logger
+                    )
+                else:
+                    lindex = existing_image_urls.index(img_url)
+                    
+                    image_url = existing_images[lindex][0]
+                    image_filename = existing_images[lindex][1]
+                    image_text = existing_images[lindex][2]
+                    image_text_en = existing_images[lindex][3]
+                    downloaded_status = existing_images[lindex][4]
+                    text_extracted_status = existing_images[lindex][5]
+                    text_translated_status = existing_images[lindex][6]
+                    gd_img_url = existing_images[lindex][6]
+
+                    row_data = (image_url, image_filename, image_text, image_text_en, 
+                            downloaded_status, text_extracted_status, text_translated_status,
+                            gd_img_url, product_url)
+
+                    insert_many(
+                        db=DB_NAME,
+                        table=TABLE_PRODUCT_IMAGES,
+                        columns_list=[
+                            "image_url",
+                            "image_filename",
+                            "image_text",
+                            "image_text_en",
+                            "downloaded_status",
+                            "text_extracted_status",
+                            "text_translated_status",
+                            "gd_img_url",
+                            "product_url"
+                        ],
+                        data=[row_data],
+                        logger=logger
+                    )
+                
         # update scraped status on product_urls table
-        # print(product_url)
         update_row(
             db=DB_NAME,
             table=TABLE_PRODUCT_DATA,

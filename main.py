@@ -72,7 +72,6 @@ def main():
             table=TABLE_PRODUCT_DATA,
             columns_list=["product_url"],
             where=[("scraped_status", "=", "0")],
-            limit=1,
             logger=logger
             )
 
@@ -89,22 +88,23 @@ def main():
         break
     logger.info("✅ Scraping finished successfully!")
 
-    # imgs_to_download = True
-    # while imgs_to_download:
-    #     imgs_to_download = fetch_many(
-    #         db=DB_NAME,
-    #         table=TABLE_PRODUCT_IMAGES,
-    #         columns_list=["image_url"],
-    #         where=[("downloaded_status", "=", "0")],
-    #         logger=logger
-    #     )
-    #     try:
-    #         download_images(image_urls_list=imgs_to_download, gd_images_folder_id=gd_images_folder_id)
-    #     except Exception as error:
-    #         logger.log_exception(error, context="downloading images...")
-    #     time.sleep(5)
+    imgs_to_download = True
+    while imgs_to_download:
+        imgs_to_download = fetch_many(
+            db=DB_NAME,
+            table=TABLE_PRODUCT_IMAGES,
+            columns_list=["image_url"],
+            where=[("downloaded_status", "=", "0")],
+            logger=logger
+
+        )
+        try:
+            download_images(image_urls_list=imgs_to_download, gd_images_folder_id=gd_images_folder_id)
+        except Exception as error:
+            logger.log_exception(error, context="downloading images...")
+        time.sleep(5)
     
-    # logger.info("✅ Images downloaded successfully!")
+    logger.info("✅ Images downloaded successfully!")
 
 
     # imgs_to_text_extraction = True
