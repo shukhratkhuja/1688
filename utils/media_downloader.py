@@ -106,7 +106,7 @@ def download_images(image_urls_list, gd_images_folder_id):
     
     # coming img_urls_list as list of tuples like [(img_url), ]
     for img_url in image_urls_list:
-        sleep_time = random.randint(30,99) * 0.1
+        sleep_time = random.randint(10,50) * 0.1
         # download single image
         img_url = img_url[0]
 

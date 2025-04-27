@@ -12,6 +12,7 @@ from utils.constants import (OPENAI_API_KEY,
                              )
 from utils.db_utils import fetch_many, update_row
 from utils.log_config import get_logger
+from utils.utils import json_loads
 
 logger = get_logger("tranlation", "app.log")
 
@@ -49,7 +50,7 @@ def translate_entry(client, entry, system_prompt):
             ]
         )
         translated_content = response.choices[0].message.content
-        translated_content = json.loads(translated_content)
+        translated_content = json_loads(translated_content)
         return translated_content
     
     except Exception as error:
@@ -77,9 +78,9 @@ def translate_product_data(product_data_to_translate):
 
         # taking translated content
         translated_data = translate_entry(client=client, system_prompt=SYSTEM_PROMPT, entry=entry)
-        
+        print("TITLE CHN", title_chn)
         # polishing translated data
-        title_en = translated_data[0].replace("'", "''")
+        title_en = translated_data[0].replace("'", "''") 
         product_attributes_en = json.dumps(parse_json_with_duplicates(translated_data[1])).replace("'", "''")
         text_details_en = translated_data[2].replace("'", "''")
         

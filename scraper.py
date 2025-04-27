@@ -14,7 +14,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.db_utils import update_row, insert_many, fetch_many
 from utils.log_config import get_logger
-from utils.constants import (DB_NAME, 
+from utils.constants import (DB_NAME,
+                             HEADLESS,
                               TABLE_PRODUCT_DATA, 
                               TABLE_PRODUCT_IMAGES, 
                               TABLE_PRODUCT_URLS,
@@ -23,7 +24,7 @@ from utils.constants import (DB_NAME,
                               OXYLABS_PASSWORD,
                               OXYLABS_ENDPOINT
                             )
-
+from utils.utils import json_dumps
 logger = get_logger("scraper", "app.log")
 
 
@@ -57,8 +58,6 @@ def get_optimized_driver(headless=False):
 
 
 def scrape(driver, url):
-
-    # logger.info("🌐 IP ADDRESS: ", )
     
     driver.get(url)
     time.sleep(2)
@@ -71,7 +70,7 @@ def scrape(driver, url):
         logger.warning(f"Bad URL! No title-text found in {url}")
         try:
             driver.find_element("xpath", "//h3[contains(text(), '商品已下架')]")
-            logger.warning("⚠️ Element removed from the site!")
+            logger.warning("⚠️  Product removed from the site!")
             return 404
         except:        
             return None
@@ -91,7 +90,7 @@ def scrape(driver, url):
 
     logger.info(f"✅ Saved: {filename}")
 
-    return True
+    return html
 
 def main(product_urls, gd_main_folder_id):
 
@@ -116,8 +115,8 @@ def main(product_urls, gd_main_folder_id):
 
         json_filename = extract_offer_id(url=product_url)
 
-        is_scraped = scrape(driver, product_url)
-        if is_scraped == 404:
+        scraper_result = scrape(driver, product_url)
+        if scraper_result == 404:
             update_row(
             db=DB_NAME,
             table=TABLE_PRODUCT_DATA,
@@ -125,28 +124,26 @@ def main(product_urls, gd_main_folder_id):
                 ("scraped_status", "1"),
                 ("translated_status", "1"),
                 ("title_chn", "404"),
+                ("title_en", "Product removed"),
                 ],
             where=[("product_url", "=", product_url)],
             logger=logger
             )
             continue
-        elif not is_scraped:
+        elif not scraper_result:
            continue 
 
-        parsed_data = None
-        with open("page_source/current_page.html") as f:
-            html = f.read()
-            parsed_data = parser(html)
+        parsed_data = parser(scraper_result)
         
         if not parsed_data:
+            logger.info("Not parsed. Moving to the next product")
             continue
 
-        logger.info("Moved to next loop...")
         time.sleep(1)
 
-        # output_filepath = os.path.join(LOCAL_OUTPUT_FOLDER, f"{json_filename}.json")
-        # with open(output_filepath, "w", encoding="utf-8") as f:
-        #     json.dump(parsed_data, f, ensure_ascii=False, indent=2)
+        output_filepath = os.path.join(LOCAL_OUTPUT_FOLDER, f"{json_filename}.json")
+        with open(output_filepath, "w", encoding="utf-8") as f:
+            json.dump(parsed_data, f, ensure_ascii=False, indent=2)
         
         title_chn = parsed_data["title_chn"] if parsed_data else None
         product_attributes_chn = parsed_data["product_attributes_chn"] if parsed_data else None
@@ -163,8 +160,8 @@ def main(product_urls, gd_main_folder_id):
             table=TABLE_PRODUCT_DATA,
             column_with_value=[
                 ("title_chn", title_chn),
-                ("product_attributes_chn", json.dumps(product_attributes_chn,  ensure_ascii=False)),
-                ("text_details_chn", json.dumps(text_details_chn,  ensure_ascii=False)),
+                ("product_attributes_chn", json_dumps(product_attributes_chn)),
+                ("text_details_chn", json_dumps(text_details_chn)),
             ],
             where=[
                 ("product_url", "=", product_url)
@@ -190,6 +187,7 @@ def main(product_urls, gd_main_folder_id):
             existing_image_urls = [row[0] for row in existing_images]
 
             image_details = [(product_url, img_url) for img_url in product_images]
+            
             for product_url, img_url in image_details:
                 if img_url not in existing_image_urls:
                     insert_many(
@@ -201,7 +199,7 @@ def main(product_urls, gd_main_folder_id):
                     )
                 else:
                     lindex = existing_image_urls.index(img_url)
-                    
+                    print("EXISTING IMAGE INDEX: ", lindex)
                     image_url = existing_images[lindex][0]
                     image_filename = existing_images[lindex][1]
                     image_text = existing_images[lindex][2]
@@ -232,7 +230,6 @@ def main(product_urls, gd_main_folder_id):
                         data=[row_data],
                         logger=logger
                     )
-                
         # update scraped status on product_urls table
         update_row(
             db=DB_NAME,
