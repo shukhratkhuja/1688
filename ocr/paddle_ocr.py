@@ -105,6 +105,10 @@ def main(img_details):
         text_list = extract_line_by_line(image_path=image_path)
 
         if text_list:
+            text_list = [text.replace("'", "''") for text in text_list]
+
+
+        if text_list:
             update_row(
                 db=DB_NAME,
                 table=TABLE_PRODUCT_IMAGES,
