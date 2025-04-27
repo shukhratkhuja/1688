@@ -9,7 +9,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.constants import (DB_NAME,
                        TABLE_PRODUCT_DATA,
-                       TABLE_PRODUCT_IMAGES
+                       TABLE_PRODUCT_IMAGES,
+                       LOCAL_OUTPUT_FOLDER,
+                       LOCAL_IMAGES_FOLDER
                        )
 
 logger = get_logger("db", "app.log")
@@ -60,7 +62,11 @@ def main():
               },
               drop=False
               )
+    
+    os.makedirs(LOCAL_OUTPUT_FOLDER, exist_ok=True)
 
+    images_output_folder = os.path.join(LOCAL_OUTPUT_FOLDER, LOCAL_IMAGES_FOLDER)
+    os.makedirs(images_output_folder, exist_ok=True)
 
 if __name__ == "__main__":
     main()

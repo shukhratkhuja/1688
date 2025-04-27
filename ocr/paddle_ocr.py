@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ocr.pytsrct_ocr import is_text_present
 from utils.db_utils import update_row
-from utils.constants import DB_NAME, TABLE_PRODUCT_IMAGES, LOCAL_IMAGES_FOLDER
+from utils.constants import DB_NAME, TABLE_PRODUCT_IMAGES, LOCAL_IMAGES_FOLDER, LOCAL_OUTPUT_FOLDER
 
 
 def extract_text(image_path):
@@ -21,17 +21,22 @@ def extract_text(image_path):
 
     # Gathered blocks: (text, y_center, x_start)
     blocks = []
+    print("RESULTS: ", results)
     for line in results:
-        for word_info in line:
-            box = word_info[0]
-            text = word_info[1][0]
-            y_center = sum([point[1] for point in box]) / 4
-            x_start = min([point[0] for point in box])
-            blocks.append((text, y_center, x_start))
+        if line:
+            print("LINE", line)
+            for word_info in line:
+                print("WORDINFO", word_info)
+                if word_info:
+                    box = word_info[0]
+                    text = word_info[1][0]
+                    y_center = sum([point[1] for point in box]) / 4
+                    x_start = min([point[0] for point in box])
+                    blocks.append((text, y_center, x_start))
 
     # First sort by y (column), then by x for each row
     blocks.sort(key=lambda b: (round(b[1] / 10), b[2]))  # get closer till 10 pxs
-    
+
     text_list = []
     # Detected text blocks in order
     for text, _, _ in blocks:
@@ -50,17 +55,18 @@ def extract_line_by_line(image_path):
 
     # 3. starting OCR 
     results = ocr.ocr(image_path, cls=True)
-    print(results)
     # So'zlarni (text, y_middle) formatida yig'amiz
     words = []
     for line in results:
-        for word_info in line:
-            box = word_info[0]
-            text = word_info[1][0]
-            # Bounding boxdagi y koordinatalarni o'rtachasi
-            y_coords = [point[1] for point in box]
-            y_center = sum(y_coords) / len(y_coords)
-            words.append((text, y_center))
+        if line:
+            for word_info in line:
+                if word_info:
+                    box = word_info[0]
+                    text = word_info[1][0]
+                    # Bounding boxdagi y koordinatalarni o'rtachasi
+                    y_coords = [point[1] for point in box]
+                    y_center = sum(y_coords) / len(y_coords)
+                    words.append((text, y_center))
 
     # Qatorlarni aniqlaymiz: y_center bo‘yicha sort qilamiz
     words.sort(key=lambda x: x[1])
@@ -99,10 +105,14 @@ def extract_line_by_line(image_path):
 def main(img_details):
 
     for image_url, image_filename in img_details:
-        print(LOCAL_IMAGES_FOLDER)
-        print(image_filename)
-        image_path = os.path.join(LOCAL_IMAGES_FOLDER, image_filename)
+        # print(LOCAL_IMAGES_FOLDER)
+        # print(image_filename)
+        image_path = os.path.join(LOCAL_OUTPUT_FOLDER, LOCAL_IMAGES_FOLDER, image_filename)
         text_list = extract_line_by_line(image_path=image_path)
+
+        if text_list:
+            text_list = [text.replace("'", "''") for text in text_list]
+
 
         if text_list:
             update_row(

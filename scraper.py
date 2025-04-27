@@ -83,7 +83,7 @@ def scrape(driver, url):
         logger.warning("No content-details appeared!")
     
     # html output filepath
-    filename = f"page_source/current_page.html"
+    filename = f"{LOCAL_OUTPUT_FOLDER}/current_page.html"
 
     html = driver.page_source
     with open(filename, "w", encoding="utf-8") as f:
