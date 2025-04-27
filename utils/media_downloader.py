@@ -58,9 +58,8 @@ def download_file(img_url, base_file_path, gd_images_folder_id):
         if "rgv587_flag" in response.text:
             print("CAPTCHA chiqdi yoki kutish kerak!")
         else:
-            with open("image.jpg", "wb") as f:
-                f.write(response.content)
-        
+            ...
+            
         img_filename = decode_filename(img_url)
 
         print(response.status_code)
@@ -92,14 +91,13 @@ def download_file(img_url, base_file_path, gd_images_folder_id):
 
 def download_images(image_urls_list, gd_images_folder_id):
     
-    images_output_folder = os.path.join(LOCAL_OUTPUT_FOLDER, LOCAL_IMAGES_FOLDER)
-    os.makedirs(images_output_folder, exist_ok=True)
     # coming img_urls_list as list of tuples like [(img_url), ]
     for img_url in image_urls_list:
         sleep_time = random.randint(30,99) * 0.1
         # download single image
         img_url = img_url[0]
-        download_file(img_url=img_url, base_file_path=LOCAL_IMAGES_FOLDER, gd_images_folder_id=gd_images_folder_id)
+
+        download_file(img_url=img_url, base_file_path=f"{LOCAL_OUTPUT_FOLDER}/{LOCAL_IMAGES_FOLDER}", gd_images_folder_id=gd_images_folder_id)
         
         logger.info(f"Sleep time while blocking: {sleep_time}")
         time.sleep(sleep_time)

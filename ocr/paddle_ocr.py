@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ocr.pytsrct_ocr import is_text_present
 from utils.db_utils import update_row
-from utils.constants import DB_NAME, TABLE_PRODUCT_IMAGES, LOCAL_IMAGES_FOLDER
+from utils.constants import DB_NAME, TABLE_PRODUCT_IMAGES, LOCAL_IMAGES_FOLDER, LOCAL_OUTPUT_FOLDER
 
 
 def extract_text(image_path):
@@ -99,9 +99,9 @@ def extract_line_by_line(image_path):
 def main(img_details):
 
     for image_url, image_filename in img_details:
-        print(LOCAL_IMAGES_FOLDER)
-        print(image_filename)
-        image_path = os.path.join(LOCAL_IMAGES_FOLDER, image_filename)
+        # print(LOCAL_IMAGES_FOLDER)
+        # print(image_filename)
+        image_path = os.path.join(LOCAL_OUTPUT_FOLDER, LOCAL_IMAGES_FOLDER, image_filename)
         text_list = extract_line_by_line(image_path=image_path)
 
         if text_list:

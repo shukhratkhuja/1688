@@ -1,0 +1,59 @@
+📝 Quick Guide: How to Run the Project
+1. Clone the project
+
+git clone git@github.com:shukhratkhuja/1688.git
+
+2. Create a virtual environment
+For Linux/macOS:
+
+python3 -m venv venv
+source venv/bin/activate
+
+For Windows:
+
+python -m venv venv
+venv\Scripts\activate
+
+3. Install requirements
+
+pip install --upgrade pip
+pip install -r requirements.txt
+
+4. Add your Google client_secrets.json
+
+Place your client_secrets.json file in the project directory.
+If the filename is different, rename it to client_secrets.json.
+
+5. Create a .env file in the project root and add the following:
+
+# Database
+LOCAL_DB=product_data.db
+TABLE_PRODUCT_DATA=product_data
+TABLE_PRODUCT_IMAGES=product_images
+
+# Folder Names
+LOCAL_IMAGES_FOLDER=images
+LOCAL_OUTPUT_FOLDER=output
+GD_OUTPUT_FOLDER=1688_product_data
+GD_IMAGES_FOLDER=images
+
+# Environment & Task Variables
+ENV=dev        # or "prod" — in dev mode logs are printed to the console
+HEADLESS=False # or True — enable/disable headless browser mode
+TRANSLATION_MODEL=gpt-3.5-turbo # can be changed to another translation-supported model
+
+# API Tokens & IDs
+OPENAI_API_KEY=your_openai_api_key
+NOTION_BEARER_TOKEN=your_notion_token
+NOTION_DB_ID=your_notion_database_id
+
+# Oxylabs Proxy (optional)
+OXYLABS_USERNAME=your_oxylabs_username
+OXYLABS_PASSWORD=your_oxylabs_password
+OXYLABS_ENDPOINT=pr.oxylabs.io:7777
+
+# Leave default values as is unless specified.
+6. Notes:
+Proxy usage is optional. If needed, fill in your Oxylabs credentials.
+In ENV=dev mode, logs will be printed to the console for debugging.
+Switch HEADLESS=True if you want the browser to run without UI.
