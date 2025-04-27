@@ -21,17 +21,22 @@ def extract_text(image_path):
 
     # Gathered blocks: (text, y_center, x_start)
     blocks = []
+    print("RESULTS: ", results)
     for line in results:
-        for word_info in line:
-            box = word_info[0]
-            text = word_info[1][0]
-            y_center = sum([point[1] for point in box]) / 4
-            x_start = min([point[0] for point in box])
-            blocks.append((text, y_center, x_start))
+        if line:
+            print("LINE", line)
+            for word_info in line:
+                print("WORDINFO", word_info)
+                if word_info:
+                    box = word_info[0]
+                    text = word_info[1][0]
+                    y_center = sum([point[1] for point in box]) / 4
+                    x_start = min([point[0] for point in box])
+                    blocks.append((text, y_center, x_start))
 
     # First sort by y (column), then by x for each row
     blocks.sort(key=lambda b: (round(b[1] / 10), b[2]))  # get closer till 10 pxs
-    
+
     text_list = []
     # Detected text blocks in order
     for text, _, _ in blocks:
@@ -50,17 +55,18 @@ def extract_line_by_line(image_path):
 
     # 3. starting OCR 
     results = ocr.ocr(image_path, cls=True)
-    print(results)
     # So'zlarni (text, y_middle) formatida yig'amiz
     words = []
     for line in results:
-        for word_info in line:
-            box = word_info[0]
-            text = word_info[1][0]
-            # Bounding boxdagi y koordinatalarni o'rtachasi
-            y_coords = [point[1] for point in box]
-            y_center = sum(y_coords) / len(y_coords)
-            words.append((text, y_center))
+        if line:
+            for word_info in line:
+                if word_info:
+                    box = word_info[0]
+                    text = word_info[1][0]
+                    # Bounding boxdagi y koordinatalarni o'rtachasi
+                    y_coords = [point[1] for point in box]
+                    y_center = sum(y_coords) / len(y_coords)
+                    words.append((text, y_center))
 
     # Qatorlarni aniqlaymiz: y_center bo‘yicha sort qilamiz
     words.sort(key=lambda x: x[1])
