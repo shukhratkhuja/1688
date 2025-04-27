@@ -85,6 +85,19 @@ def download_file(img_url, base_file_path, gd_images_folder_id):
                 where=[("image_url","=",img_url)]
             )
             return True
+        elif response.status_code == 404:
+            update_row(
+                db=DB_NAME,
+                table=TABLE_PRODUCT_IMAGES,
+                column_with_value=[
+                    ("downloaded_status", "1"),
+                    ("image_filename", img_filename),
+                    ("gd_img_url", "404"),
+                ],
+                where=[("image_url","=",img_url)]
+            )
+            return True
+
         else:
             logger.error(f"❌ File not downloaded: {img_url}, Response: {str(response.content)}")
             return None
