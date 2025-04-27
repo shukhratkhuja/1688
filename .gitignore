@@ -11,3 +11,4 @@ logs/
 *.log
 mycreds.txt
 client_secret.json
+*.db
