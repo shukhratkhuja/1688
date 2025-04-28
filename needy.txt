@@ -1,8 +1,0 @@
-# Captcha sahifasi yuklanganini aniqlash
-try:
-    slider = WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Please slide to verify')]"))
-    )
-    input("🔐 Captcha topildi! Iltimos, yeching va Enter bosing...")
-except:
-    print("✅ Captcha topilmadi, davom etamiz.")

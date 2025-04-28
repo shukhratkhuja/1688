@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: my_project_container
+    volumes:
+      - ./images:/app/images
+      - ./output:/app/output
+      - ./product_data.db:/app/product_data.db
+      - ./client_secret.json:/app/client_secret.json
+      - ./.env:/app/.env
+    environment:
+      - ENV=production
+    restart: unless-stopped
