@@ -12,13 +12,17 @@ from utils.constants import (OPENAI_API_KEY,
                              )
 from utils.db_utils import fetch_many, update_row
 from utils.log_config import get_logger
-from utils.utils import json_loads
+from utils.utils import json_loads, json_dumps
 
 logger = get_logger("tranlation", "app.log")
 
 
 def parse_json_with_duplicates(json_str):
+
+    if type(json_str) == dict:
+        return json_str
     
+    json_str = json_str.replace("'", "''")
     pairs = json.loads(json_str, object_pairs_hook=lambda pairs: pairs)
     merged = defaultdict(list)
     
@@ -55,8 +59,7 @@ def translate_entry(client, entry, system_prompt):
     
     except Exception as error:
         logger.log_exception(error, context="openai request")
-        return None
-
+        raise error
 
 def translate_product_data(product_data_to_translate):
 
@@ -78,12 +81,28 @@ def translate_product_data(product_data_to_translate):
 
         # taking translated content
         translated_data = translate_entry(client=client, system_prompt=SYSTEM_PROMPT, entry=entry)
-        print("TITLE CHN", title_chn)
-        # polishing translated data
-        title_en = translated_data[0].replace("'", "''") 
-        product_attributes_en = json.dumps(parse_json_with_duplicates(translated_data[1])).replace("'", "''")
-        text_details_en = translated_data[2].replace("'", "''")
-        
+        if translated_data:
+            print(translated_data)
+
+
+            print("TITLE CHN", title_chn)
+            # polishing translated data
+            title_en = translated_data[0]
+            if title_en:
+                title_en = title_en.replace("'", "''")
+            
+            product_attributes_en = translated_data[1]
+            if product_attributes_en:
+                product_attributes_en = parse_json_with_duplicates(product_attributes_en)
+                product_attributes_en = json_dumps(product_attributes_en)
+
+            text_details_en = translated_data[2]
+            if text_details_en:
+                if type(text_details_en) == str:
+                    text_details_en = text_details_en.replace("'", "''")
+                    
+                text_details_en = json_dumps(text_details_en)
+
         # writing translations to db
         update_row(
             db=DB_NAME,
