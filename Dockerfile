@@ -24,6 +24,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 ENV CUDA_VISIBLE_DEVICES=""
 
 # Port va boshqa sozlashlar kerak bo‘lsa shu yerda qo‘shish mumkin
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-# Loyihani ishga tushirish
-CMD ["python", "main.py"]
+ENTRYPOINT ["/app/entrypoint.sh"]

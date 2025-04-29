@@ -3,12 +3,13 @@ version: "3.9"
 services:
   app:
     build: .
-    container_name: my_project_container
+    container_name: product_data_pipeline
     volumes:
       - ./images:/app/images
       - ./output:/app/output
       - ./product_data.db:/app/product_data.db
-      - ./client_secret.json:/app/client_secret.json
+      - ./client_secrets.json:/app/client_secrets.json
+      - ./mycreds.txt:/app/mycreds.txt
       - ./.env:/app/.env
     environment:
       - ENV=production
