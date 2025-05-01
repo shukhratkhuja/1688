@@ -47,13 +47,16 @@ def download_file(img_url, base_file_path, gd_images_folder_id):
         return False
 
     try:
-        entry = ('http://customer-%s-cc-CN:%s@%s' %
-                (OXYLABS_USERNAME, OXYLABS_PASSWORD, OXYLABS_ENDPOINT))
 
-        proxies = {
-            "http": entry,
-            "https": entry
-        }
+        # Will be used if needed
+        
+        # entry = ('http://customer-%s-cc-CN:%s@%s' %
+        #         (OXYLABS_USERNAME, OXYLABS_PASSWORD, OXYLABS_ENDPOINT))
+
+        # proxies = {
+        #     "http": entry,
+        #     "https": entry
+        # }
         
         # Fallback to no proxy if needed
         proxies = {}

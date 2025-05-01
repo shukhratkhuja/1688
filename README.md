@@ -15,7 +15,7 @@ This project automates the following process:
 
 ## Prerequisites
 
-- Python 3.9+
+- Python 3.10+
 - Google Chrome (for web scraping)
 - Google Drive API credentials
 - Notion API credentials

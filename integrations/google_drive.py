@@ -9,15 +9,15 @@ from utils.log_config import get_logger
 logger = get_logger("GD", "app.log")
 
 def get_drive():
-        # Auth
+    # Auth
     gauth = GoogleAuth()
-    gauth.LoadClientConfigFile("client_secrets.json")
+    # gauth.LoadClientConfigFile("client_secrets.json")
 
-    gauth.GetFlow()
-    gauth.flow.params.update({
-        'access_type': 'offline',
-        'prompt': 'consent',
-    })
+    # gauth.GetFlow()
+    # gauth.flow.params.update({
+    #     'access_type': 'offline',
+    #     'prompt': 'consent',
+    # })
 
     if gauth.credentials is None:
         # No credentials, do manual authentication
@@ -29,7 +29,7 @@ def get_drive():
         # Initialize the saved credentials
         gauth.Authorize()
 
-    gauth.SaveCredentialsFile("mycreds.txt")
+    # gauth.SaveCredentialsFile("mycreds.txt")
 
     drive = GoogleDrive(gauth)
 
