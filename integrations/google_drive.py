@@ -19,6 +19,9 @@ def get_drive():
     #     'prompt': 'consent',
     # })
 
+    # ✅ Load saved credentials if available
+    gauth.LoadCredentialsFile("mycreds.txt")
+
     if gauth.credentials is None:
         # No credentials, do manual authentication
         gauth.LocalWebserverAuth()

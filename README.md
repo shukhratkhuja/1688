@@ -87,7 +87,7 @@ sudo apt-get install -y tesseract-ocr tesseract-ocr-chi-sim
 2. Install Python dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt -f https://www.paddlepaddle.org.cn/whl/pip/cpu
 ```
 
 3. Run the application:
