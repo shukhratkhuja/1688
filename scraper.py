@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
-
+import subprocess
 from integrations.google_drive import upload_to_drive_and_get_link, get_or_create_folder
 from parser import parser
 
@@ -33,8 +33,17 @@ def extract_offer_id(url: str) -> str:
     
     return match.group(1) if match else "unknown"
 
+def get_chrome_major_version():
+    result = subprocess.run(['google-chrome', '--version'], stdout=subprocess.PIPE)
+    version = result.stdout.decode()
+    major_version = int(re.search(r'(\d+)\.', version).group(1))
+    return major_version
+
 
 def get_optimized_driver(headless=False):
+
+    chrome_version = get_chrome_major_version()
+
     options = uc.ChromeOptions()
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--no-sandbox')
@@ -52,7 +61,7 @@ def get_optimized_driver(headless=False):
 
     # options.add_argument(f'--proxy-server={entry}')
 
-    driver = uc.Chrome(options=options)
+    driver = uc.Chrome(options=options, version_main=chrome_version)
     logger.info("Get driver")
     return driver
 

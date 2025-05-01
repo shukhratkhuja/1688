@@ -2,86 +2,83 @@ import sqlite3
 from typing import List, Tuple, Union, Dict
 import traceback  # bu juda foydali
 from logging import Logger
+import time
 from utils.log_config import get_logger
-
 def prepare_table(
         db: str, 
         table: str, 
         columns_dict: Dict[str, str], 
         drop: bool = False,
         logger: Logger = None
-    ) -> None:
+    ) -> bool:
     
     """
     Creates a SQLite table based on the given column definitions.
-    If `drop=True`, the existing table will be dropped before creation.
-
+    
     Args:
-        db (str): Path to the SQLite database file (e.g., "my_database.db").
+        db (str): Path to the SQLite database file.
         table (str): Name of the table to be created.
         columns_dict (Dict[str, str]): Dictionary of column names and their data types.
-            Example: {"id": "INTEGER PRIMARY KEY", "name": "TEXT", "created_at": "DATETIME"}.
-        drop (bool, optional): If True, drops the table if it already exists before creating a new one.
-            Default is False.
-        logger (Logger, optional): Custom logger instance for logging progress and errors.
-            If not provided, a default logger will be created using `get_logger("log", "db.log")`.
-
+        drop (bool, optional): If True, drops the table if it already exists.
+        logger (Logger, optional): Custom logger instance for logging.
+        
     Returns:
-        None
-
-    Side Effects:
-        - Creates a new table in the SQLite database (or keeps the existing one if `drop` is False).
-        - Prints the status of table creation or deletion to the console.
-
-    Example:
-        >>> prepare_table(
-                db="my.db",
-                table="users",
-                columns_dict={
-                    "id": "INTEGER PRIMARY KEY",
-                    "username": "TEXT",
-                    "email": "TEXT"
-                },
-                drop=True
-            )
+        bool: True if table was created successfully, False otherwise
     """
-
-
     if logger is None:
-        logger = get_logger("db", "app.log")  # fallback if logger not provided
+        logger = get_logger("db", "app.log")
 
+    # Validate inputs
+    if not db or not table or not columns_dict:
+        logger.error("Invalid parameters: db, table, and columns_dict must be provided")
+        return False
+        
     try:
         with sqlite3.connect(db) as connection:
             cursor = connection.cursor()
             
             if drop:
-                cursor.execute("DROP TABLE IF EXISTS %s;"%table)
+                try:
+                    cursor.execute("DROP TABLE IF EXISTS %s;"%table)
+                    connection.commit()
+                    logger.info(f"❌DB: {db}, TABLE: {table} dropped")
+                except sqlite3.OperationalError as e:
+                    logger.error(f"Failed to drop table {table}: {str(e)}")
+                    raise
+
+            # Build columns string with validation
+            try:
+                columns_text = ",".join(["%s %s"%(column_name, column_type) 
+                                       for column_name, column_type in columns_dict.items()])
+            except Exception as e:
+                logger.error(f"Failed to build columns string: {str(e)}")
+                raise
                 
-                connection.commit()
-                logger.info(f"❌DB: {db}, TABLE: {table} dropped")
-
-
-            columns_text = ",".join(["%s %s"%(column_name, column_type) for column_name, column_type in columns_dict.items()])
-            
-            create_table_query = """
-                        CREATE TABLE IF NOT EXISTS %(table)s (
-                        %(columns_str)s
-                        );
-                    """%{
-                        "table":table,
-                        "columns_str": columns_text
-                        }
+            create_table_query = f"""
+                CREATE TABLE IF NOT EXISTS {table} (
+                {columns_text}
+                );
+            """
             
             cursor.execute(create_table_query)
-            
             connection.commit()
             logger.info(f"✅DB: {db}, TABLE: {table} created")
+            return True
+            
+    except sqlite3.OperationalError as e:
+        # Database might be locked or other operational issue
+        logger.error(f"SQLite operational error while creating table {table}: {str(e)}")
+        raise
+    except sqlite3.DatabaseError as e:
+        # More general database error
+        logger.error(f"Database error while creating table {table}: {str(e)}")
+        raise
     except Exception as e:
+        logger.error(f"Unexpected error creating table {table}: {str(e)}")
         logger.log_exception(e, context="preparing tables")
-
-# TESTING prepare_table
-# prepare_table(db="test.db", table="test_table", columns_dict={"id": "INTEGER", "data": "TEXT"}, drop=True)
-
+        raise
+        
+    return False
 
 def insert_many(
         db: str, 
@@ -91,82 +88,97 @@ def insert_many(
         chunk_size: int = 1000, 
         delete: bool = False, 
         chunk_head: int = 0,
-        logger: Logger = None
-
-    ) -> None: 
+        logger: Logger = None,
+        max_retries: int = 3
+    ) -> bool:
     
     """
-    Inserts data into a SQLite table in chunks.
-    Optionally clears the table before inserting new data.
-
+    Inserts data into a SQLite table in chunks with retry logic.
+    
     Args:
-        db (str): Path to the SQLite database file (e.g., "my_database.db").
+        db (str): Path to the SQLite database file.
         table (str): Name of the table to insert data into.
-        columns_list (List[str]): List of column names, ordered to match each tuple in `data`.
+        columns_list (List[str]): List of column names.
         data (List[Tuple]): Data to insert. Each tuple must match the column order.
-        chunk_size (int, optional): Number of rows to insert per chunk. Default is 1000.
-        delete (bool, optional): If True, clears the table before inserting. Default is False.
-        chunk_head (int, optional): Index of the chunk to start from. Useful for resuming after failure. Default is 0.
-        logger (Logger, optional): Custom logger instance for logging progress and errors.
-            If not provided, a default logger will be created using `get_logger("log", "db.log")`.
-
+        chunk_size (int, optional): Number of rows to insert per chunk.
+        delete (bool, optional): If True, clears the table before inserting.
+        chunk_head (int, optional): Index of the chunk to start from.
+        logger (Logger, optional): Custom logger instance.
+        max_retries (int, optional): Maximum number of retry attempts for transient errors.
+        
     Returns:
-        None
-
-    Side Effects:
-        - Inserts rows into the table.
-        - Logs each chunk using the provided logger or a fallback logger.
-        - Logs or prints errors, but does not stop execution.
-
-    Example:
-        >>> insert_many(
-                db="my.db",
-                table="ads",
-                columns_list=["id", "title", "created_at"],
-                data=[(1, "Ad1", "2025-04-07"), (2, "Ad2", "2025-04-07")],
-                delete=True
-            )
+        bool: True if all data was inserted successfully, False otherwise
     """
-
-
     if logger is None:
-        logger = get_logger("db", "app.log")  # fallback if logger not provided
+        logger = get_logger("db", "app.log")
+        
+    # Validate inputs
+    if not db or not table or not columns_list:
+        logger.error("Invalid parameters: db, table, and columns_list must be provided")
+        return False
+        
+    if not data:
+        logger.warning(f"No data provided to insert into {table}")
+        return True  # Nothing to do, but not an error
 
-    with sqlite3.connect(db) as connection:
-        cursor = connection.cursor()
+    try:
+        with sqlite3.connect(db) as connection:
+            cursor = connection.cursor()
 
-        if delete:
-            cursor.execute("DELETE FROM %s;"%table)
-            
-            connection.commit()
-            logger.info(f"❌DB: {db}, TABLE: {table} cleared")
+            if delete:
+                try:
+                    cursor.execute(f"DELETE FROM {table};")
+                    connection.commit()
+                    logger.info(f"❌DB: {db}, TABLE: {table} cleared")
+                except sqlite3.Error as e:
+                    logger.error(f"Failed to clear table {table}: {str(e)}")
+                    raise
 
-
-        for i in range(chunk_head, len(data), chunk_size):
-            data_chunk = data[i:i + chunk_size]
-            
-            columns_text = ",".join(columns_list)
-            placeholders = ",".join(["?"]*len(columns_list))
-            
-            try:
-                cursor.executemany("""
-                    INSERT INTO %(table)s (
-                                %(columns)s
-                    ) VALUES (%(placeholders)s);
-                    """%{
-                        "table": table,
-                        "columns": columns_text,
-                        "placeholders": placeholders
-                    }, data_chunk)
+            # Process data in chunks
+            for i in range(chunk_head, len(data), chunk_size):
+                data_chunk = data[i:i + chunk_size]
                 
-                connection.commit()
+                columns_text = ",".join(columns_list)
+                placeholders = ",".join(["?"]*len(columns_list))
                 
-                logger.info(f"✅DB: {db}, TABLE: {table} | {len(data)} rows inserted")
-            
-            except Exception as error:
-                logger.log_exception(error, context="inserting rows")
-
-
+                insert_query = f"""
+                    INSERT INTO {table} (
+                                {columns_text}
+                    ) VALUES ({placeholders});
+                """
+                
+                # Implement retry logic for transient errors
+                retries = 0
+                while retries <= max_retries:
+                    try:
+                        cursor.executemany(insert_query, data_chunk)
+                        connection.commit()
+                        logger.info(f"✅DB: {db}, TABLE: {table} | {len(data_chunk)} rows inserted")
+                        break
+                    except sqlite3.OperationalError as e:
+                        retries += 1
+                        if "database is locked" in str(e) and retries <= max_retries:
+                            wait_time = 0.5 * (2 ** retries)  # Exponential backoff
+                            logger.warning(f"Database locked, retry {retries}/{max_retries} after {wait_time}s")
+                            time.sleep(wait_time)
+                        else:
+                            logger.error(f"SQLite operational error: {str(e)}")
+                            raise
+                    except Exception as error:
+                        logger.error(f"Error inserting data chunk: {str(error)}")
+                        raise
+                        
+                if retries > max_retries:
+                    logger.error(f"Failed to insert chunk after {max_retries} retries")
+                    return False
+                    
+            return True
+                
+    except Exception as error:
+        logger.log_exception(error, context="inserting rows")
+        raise
+        
+    return False
 # TESTING insert_many
 # insert_many(db="test.db", table="test_table", columns_list=["id", "data"], delete=True, data=[(1, "men"), (2, "sen"), (3, "u")])
 

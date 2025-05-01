@@ -1,7 +1,7 @@
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 
-import sys, time, os
+import sys, time, os, random
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.log_config import get_logger
@@ -11,14 +11,7 @@ logger = get_logger("GD", "app.log")
 def get_drive():
         # Auth
     gauth = GoogleAuth()
-    # gauth.LoadClientConfigFile("client_secrets.json")
-
-    gauth.LoadCredentialsFile("mycreds.txt")
-
-    if gauth.access_token_expired:
-        gauth.Refresh()
-    else:
-        gauth.Authorize()
+    gauth.LoadClientConfigFile("client_secrets.json")
 
     gauth.GetFlow()
     gauth.flow.params.update({
@@ -26,12 +19,14 @@ def get_drive():
         'prompt': 'consent',
     })
 
-
     if gauth.credentials is None:
+        # No credentials, do manual authentication
         gauth.LocalWebserverAuth()
     elif gauth.access_token_expired:
+        # Refresh credentials if expired
         gauth.Refresh()
     else:
+        # Initialize the saved credentials
         gauth.Authorize()
 
     gauth.SaveCredentialsFile("mycreds.txt")
@@ -117,29 +112,82 @@ def upload_or_update_file(folder_id, local_file_path):
     return f"https://drive.google.com/uc?export=download&id={file_id}"
 
 
-def upload_image_if_not_exists(images_folder_id, local_image_path):
 
-    drive = get_drive()
-    filename = local_image_path.split("/")[-1]
-
-    query = f"title = '{filename}' and '{images_folder_id}' in parents and trashed = false"
-    file_list = drive.ListFile({'q': query}).GetList()
-
-    if file_list:
-        print(f"🖼️ Image '{filename}' already exists.")
-        return f"https://drive.google.com/uc?export=download&id={file_list[0]['id']}"
+def upload_image_if_not_exists(images_folder_id, local_image_path, max_retries=3):
+    """
+    Upload an image to Google Drive if it doesn't already exist.
     
-    file = drive.CreateFile({
-        'title': filename,
-        'parents': [{'id': images_folder_id}]
-    })
-    file.SetContentFile(local_image_path)
-    file.Upload()
+    Args:
+        images_folder_id (str): Google Drive folder ID for images
+        local_image_path (str): Path to the local image file
+        max_retries (int): Maximum number of retry attempts
+        
+    Returns:
+        str: Google Drive download URL or error message
+    """
+    drive = None
+    logger = get_logger("GD", "app.log")
+    
+    # Validate inputs
+    if not images_folder_id or not local_image_path:
+        logger.error("Missing required parameters")
+        return "parameter_error"
+        
+    if not os.path.exists(local_image_path):
+        logger.error(f"Local image does not exist: {local_image_path}")
+        return "file_not_found"
 
-    file.InsertPermission({'type': 'anyone', 'value': 'anyone', 'role': 'reader'})
+    # Get filename from path
+    try:
+        filename = os.path.basename(local_image_path)
+    except Exception as e:
+        logger.error(f"Error extracting filename from path: {str(e)}")
+        return "path_error"
 
-    logger.info(f"✅ Image '{filename}' uploaded.")
-    return f"https://drive.google.com/uc?export=download&id={file['id']}"
+    # Retry loop for Google Drive operations
+    for attempt in range(max_retries):
+        try:
+            # Get authenticated drive instance
+            drive = get_drive()
+            
+            # Search for existing file
+            query = f"title = '{filename}' and '{images_folder_id}' in parents and trashed = false"
+            file_list = drive.ListFile({'q': query}).GetList()
+
+            if file_list:
+                logger.info(f"🖼️ Image '{filename}' already exists in Google Drive")
+                return f"https://drive.google.com/uc?export=download&id={file_list[0]['id']}"
+            
+            # Upload new file
+            file = drive.CreateFile({
+                'title': filename,
+                'parents': [{'id': images_folder_id}]
+            })
+            file.SetContentFile(local_image_path)
+            file.Upload()
+
+            # Set public permission
+            try:
+                file.InsertPermission({'type': 'anyone', 'value': 'anyone', 'role': 'reader'})
+            except Exception as e:
+                logger.warning(f"Failed to set public permission: {str(e)}")
+                # Continue anyway, as the file is uploaded
+
+            logger.info(f"✅ Image '{filename}' uploaded to Google Drive")
+            return f"https://drive.google.com/uc?export=download&id={file['id']}"
+            
+        except Exception as e:
+            logger.error(f"Attempt {attempt+1}/{max_retries} failed: {str(e)}")
+            
+            # Exponential backoff
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) + random.uniform(0, 1)
+                logger.info(f"Retrying after {wait_time:.2f} seconds...")
+                time.sleep(wait_time)
+            
+    # All retries failed
+    logger.error(f"Failed to upload {filename} after {max_retries} attempts")
+    return "upload_failed"
 
 
 def upload_to_drive_and_get_link(gd_main_folder_id, local_filepath):
