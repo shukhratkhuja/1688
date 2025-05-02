@@ -150,9 +150,9 @@ def main(product_urls, gd_main_folder_id):
 
         time.sleep(1)
 
-        output_filepath = os.path.join(LOCAL_OUTPUT_FOLDER, f"{json_filename}.json")
-        with open(output_filepath, "w", encoding="utf-8") as f:
-            json.dump(parsed_data, f, ensure_ascii=False, indent=2)
+        # output_filepath = os.path.join(LOCAL_OUTPUT_FOLDER, f"{json_filename}.json")
+        # with open(output_filepath, "w", encoding="utf-8") as f:
+        #     json.dump(parsed_data, f, ensure_ascii=False, indent=2)
         
         title_chn = parsed_data["title_chn"] if parsed_data else None
         product_attributes_chn = parsed_data["product_attributes_chn"] if parsed_data else None
