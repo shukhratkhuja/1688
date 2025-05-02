@@ -42,7 +42,7 @@ def get_chrome_major_version():
 
 def get_optimized_driver(headless=False):
 
-    chrome_version = get_chrome_major_version()
+    # chrome_version = get_chrome_major_version()
 
     options = uc.ChromeOptions()
     options.add_argument('--disable-dev-shm-usage')
@@ -61,7 +61,7 @@ def get_optimized_driver(headless=False):
 
     # options.add_argument(f'--proxy-server={entry}')
 
-    driver = uc.Chrome(options=options, version_main=chrome_version)
+    driver = uc.Chrome(options=options, version_main=135)
     logger.info("Get driver")
     return driver
 

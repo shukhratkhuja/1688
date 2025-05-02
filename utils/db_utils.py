@@ -77,6 +77,9 @@ def prepare_table(
         logger.error(f"Unexpected error creating table {table}: {str(e)}")
         logger.log_exception(e, context="preparing tables")
         raise
+    finally:
+        cursor.close()
+        connection.close()
         
     return False
 
@@ -177,6 +180,10 @@ def insert_many(
     except Exception as error:
         logger.log_exception(error, context="inserting rows")
         raise
+
+    finally:
+        cursor.close()
+        connection.close()
         
     return False
 # TESTING insert_many
@@ -258,6 +265,9 @@ def fetch_many(
     except Exception as error:
         logger.log_exception(error, context="fetching rows")
         raise error
+    finally:
+        cursor.close()
+        connection.close()
 
 
 def update_row(
@@ -333,10 +343,14 @@ def update_row(
             connection.commit()
             logger.info(f"✅ {cursor.rowcount} rows updated.")
 
+        
     except Exception as error:
         logger.log_exception(error, context="updating rows")
         raise error
-
+    
+    finally:
+        cursor.close()
+        connection.close()
 
 
 # TESTING fetch_many

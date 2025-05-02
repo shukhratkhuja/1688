@@ -51,6 +51,10 @@ def get_logger(name: str, log_file: str, level=logging.DEBUG):
     file_handler.setLevel(level)
     file_handler.setFormatter(formatter)
     file_handler.addFilter(UppercaseFilter())
+    file_handler.stream.reconfigure(encoding='utf-8')
+
+    file_handler.stream = open(file_handler.stream.fileno(), mode='w', encoding='utf8', buffering=1)
+    
     logger.addHandler(file_handler)
 
     # Dev rejimida konsolga ham chiqaramiz
@@ -59,7 +63,10 @@ def get_logger(name: str, log_file: str, level=logging.DEBUG):
         console_handler.setLevel(level)
         console_handler.setFormatter(formatter)
         console_handler.addFilter(UppercaseFilter())
+        console_handler.stream.reconfigure(encoding='utf-8')
+        console_handler.stream = open(console_handler.stream.fileno(), mode='w', encoding='utf8', buffering=1)
         logger.addHandler(console_handler)
+
 
     logger.propagate = False
     return logger
