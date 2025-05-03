@@ -25,6 +25,7 @@ def decode_filename(image_url):
     
     parsed = urlparse(image_url)
     image_name = os.path.basename(parsed.path)
+    image_name = image_name.replace("!!", "_").replace("-","_")
 
     return image_name
 

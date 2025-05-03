@@ -47,6 +47,10 @@ def extract_text(image_path):
 
 def extract_line_by_line(image_path):
 
+    
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # one level up from /ocr
+    image_path = os.path.join(base_dir, image_path)
+
     if not is_text_present(image_path=image_path):
         return None
 
