@@ -1,6 +1,6 @@
 import logging
 import traceback
-import os
+import os, re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -8,6 +8,22 @@ ENV = os.getenv("ENV", "dev")
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
+
+
+class SafeUnicodeFilter(logging.Filter):
+    def filter(self, record):
+        # Faqat ascii (yoki xavfsiz unicode) belgilarini qoldiramiz
+        record.msg = self._remove_unsupported_chars(str(record.msg))
+        return True
+
+    def _remove_unsupported_chars(self, text):
+        try:
+            text.encode('cp1252')  # Windows default
+            return text
+        except UnicodeEncodeError:
+            # Yo Windows konsol kodirovka xatosi bo'lsa: emoji & unsupported belgilarni olib tashlaymiz
+            return re.sub(r'[^\x00-\x7F]+', '', text)  # faqat ascii qoldiradi
+
 
 class CustomLogger(logging.Logger):
     def log_exception(self, exception: Exception, context: str = None):
@@ -50,7 +66,10 @@ def get_logger(name: str, log_file: str, level=logging.DEBUG):
     file_handler = logging.FileHandler(file_path)
     file_handler.setLevel(level)
     file_handler.setFormatter(formatter)
+    file_handler.addFilter(SafeUnicodeFilter())
     file_handler.addFilter(UppercaseFilter())
+    file_handler.stream.reconfigure(encoding='utf-8')
+    
     logger.addHandler(file_handler)
 
     # Dev rejimida konsolga ham chiqaramiz
@@ -58,8 +77,10 @@ def get_logger(name: str, log_file: str, level=logging.DEBUG):
         console_handler = logging.StreamHandler()
         console_handler.setLevel(level)
         console_handler.setFormatter(formatter)
+        console_handler.addFilter(SafeUnicodeFilter())
         console_handler.addFilter(UppercaseFilter())
         logger.addHandler(console_handler)
+
 
     logger.propagate = False
     return logger
