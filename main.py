@@ -149,7 +149,8 @@ def main():
                     table=TABLE_PRODUCT_IMAGES,
                     columns_list=["image_url", "image_filename"],
                     where=[("text_extracted_status", "=", "0"),
-                           ("image_filename","IS NOT", "NULL")
+                           ("image_filename","IS NOT", "NULL"),
+                            ("gd_img_url", "!=", "404")
                            ],
                     logger=logger
                 )
