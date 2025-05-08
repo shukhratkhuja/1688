@@ -10,6 +10,7 @@ from utils.db_utils import insert_many, fetch_many, update_row
 from utils.log_config import get_logger
 from integrations.google_drive import (get_or_create_folder, 
                                        get_or_create_subfolder, 
+                                       get_or_create_sub_subfolder, 
                                        upload_to_drive_and_get_link)
 from integrations.notion import get_urls, notion_update_json_content
 from scraper import main as main_scraper
@@ -122,70 +123,71 @@ def main():
                 )
 
                 if urls_to_scrape:
-                    main_scraper(product_urls=urls_to_scrape, gd_main_folder_id=gd_main_folder_id)
+
+                    main_scraper(product_urls=urls_to_scrape, gd_main_folder_id=gd_main_folder_id, gd_images_folder_id=gd_images_folder_id)
                 else:
                     logger.info("No data to scrape...")
                 time.sleep(1)
 
-        with handle_process("Image downloading"):
-            imgs_to_download = True
-            while imgs_to_download:
-                imgs_to_download = fetch_many(
-                    db=DB_NAME,
-                    table=TABLE_PRODUCT_IMAGES,
-                    columns_list=["image_url"],
-                    where=[("downloaded_status", "=", "0")],
-                    logger=logger
-                )
-                if imgs_to_download:
-                    download_images(image_urls_list=imgs_to_download, gd_images_folder_id=gd_images_folder_id)
-                time.sleep(5)
+        # with handle_process("Image downloading"):
+        #     imgs_to_download = True
+        #     while imgs_to_download:
+        #         imgs_to_download = fetch_many(
+        #             db=DB_NAME,
+        #             table=TABLE_PRODUCT_IMAGES,
+        #             columns_list=["image_url", "gd_product_images_folder_id"],
+        #             where=[("downloaded_status", "=", "0")],
+        #             logger=logger
+        #         )
+        #         if imgs_to_download:
+        #             download_images(image_details_to_downlaod=imgs_to_download)
+        #         time.sleep(5)
 
-        with handle_process("Text extraction"):
-            imgs_to_text_extraction = True
-            while imgs_to_text_extraction:
-                imgs_to_text_extraction = fetch_many(
-                    db=DB_NAME,
-                    table=TABLE_PRODUCT_IMAGES,
-                    columns_list=["image_url", "image_filename"],
-                    where=[("text_extracted_status", "=", "0"),
-                           ("image_filename","IS NOT", "NULL")
-                           ],
-                    logger=logger
-                )
-                if imgs_to_text_extraction:
-                    text_extraction(img_details=imgs_to_text_extraction)
+        # with handle_process("Text extraction"):
+        #     imgs_to_text_extraction = True
+        #     while imgs_to_text_extraction:
+        #         imgs_to_text_extraction = fetch_many(
+        #             db=DB_NAME,
+        #             table=TABLE_PRODUCT_IMAGES,
+        #             columns_list=["image_url", "image_filename"],
+        #             where=[("text_extracted_status", "=", "0"),
+        #                    ("image_filename","IS NOT", "NULL")
+        #                    ],
+        #             logger=logger
+        #         )
+        #         if imgs_to_text_extraction:
+        #             text_extraction(img_details=imgs_to_text_extraction)
 
-        with handle_process("Translation"):
-            data_to_translate = True
-            while data_to_translate:
-                data_to_translate = fetch_many(
-                    db=DB_NAME,
-                    table=TABLE_PRODUCT_DATA,
-                    columns_list=["product_url","title_chn", "product_attributes_chn", "text_details_chn"],
-                    where=[
-                        ("scraped_status", "=", "1"),
-                        ("translated_status", "=", "0"),
-                        ("title_chn","!=", "404")
-                           ],
-                    logger=logger
-                )
-                if data_to_translate:
-                    translate_product_data(product_data_to_translate=data_to_translate)
+        # with handle_process("Translation"):
+        #     data_to_translate = True
+        #     while data_to_translate:
+        #         data_to_translate = fetch_many(
+        #             db=DB_NAME,
+        #             table=TABLE_PRODUCT_DATA,
+        #             columns_list=["product_url","title_chn", "product_attributes_chn", "text_details_chn"],
+        #             where=[
+        #                 ("scraped_status", "=", "1"),
+        #                 ("translated_status", "=", "0"),
+        #                 ("title_chn","!=", "404")
+        #                    ],
+        #             logger=logger
+        #         )
+        #         if data_to_translate:
+        #             translate_product_data(product_data_to_translate=data_to_translate)
 
-            imgs_to_translate = True
-            while imgs_to_translate:
-                imgs_to_translate = fetch_many(
-                    db=DB_NAME,
-                    table=TABLE_PRODUCT_IMAGES,
-                    columns_list=["image_url","image_text"],
-                    where=[("text_translated_status", "=", "0"),
-                           ("text_extracted_status", "=", "1"),
-                           ("image_text", "!=", "None")],
-                    logger=logger,
-                )
-                if imgs_to_translate:
-                    translate_product_img_texts(img_details_to_translate=imgs_to_translate)
+        #     imgs_to_translate = True
+        #     while imgs_to_translate:
+        #         imgs_to_translate = fetch_many(
+        #             db=DB_NAME,
+        #             table=TABLE_PRODUCT_IMAGES,
+        #             columns_list=["image_url","image_text"],
+        #             where=[("text_translated_status", "=", "0"),
+        #                    ("text_extracted_status", "=", "1"),
+        #                    ("image_text", "!=", "None")],
+        #             logger=logger,
+        #         )
+        #         if imgs_to_translate:
+        #             translate_product_img_texts(img_details_to_translate=imgs_to_translate)
 
         with handle_process("Google Drive upload"):
             not_uploaded_product_data = fetch_many(
@@ -279,7 +281,7 @@ def main():
             data_to_update_notion = fetch_many(
                 db=DB_NAME,
                 table=TABLE_PRODUCT_DATA,
-                columns_list=["product_url", "gd_file_url", "notion_product_id"],
+                columns_list=["product_url", "gd_file_url", "notion_product_id", "gd_product_images_folder_id"],
                 where=[
                     ("uploaded_to_gd_status", "=", "1"),
                     ("updated_on_notion_status", "=", "0")
@@ -292,8 +294,9 @@ def main():
                         product_url = dt[0]
                         gd_file_url = dt[1]
                         notion_product_id = dt[2]
+                        gd_product_images_folder_id = dt[3]
 
-                        notion_update_json_content(page_id=notion_product_id, gd_file_url=gd_file_url)
+                        notion_update_json_content(page_id=notion_product_id, gd_file_url=gd_file_url, gd_product_images_folder_id=gd_product_images_folder_id)
                         update_row(
                             db=DB_NAME,
                             table=TABLE_PRODUCT_DATA,

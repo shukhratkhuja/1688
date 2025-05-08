@@ -30,7 +30,7 @@ def decode_filename(image_url):
     return image_name
 
 
-def download_file(img_url, base_file_path, gd_images_folder_id):
+def download_file(img_url, base_file_path, gd_product_images_folder_id):
     """
     Download an image from a URL and upload it to Google Drive.
     
@@ -80,6 +80,7 @@ def download_file(img_url, base_file_path, gd_images_folder_id):
             return False
 
         img_filename = decode_filename(img_url)
+        img_filename = img_filename.replace("!!", "_").replace("-", "_")
         
         if response.status_code == 200:
             # Ensure the directory exists
@@ -93,7 +94,7 @@ def download_file(img_url, base_file_path, gd_images_folder_id):
             # Handle potential Google Drive upload failures
             try:
                 gd_image_id = upload_image_if_not_exists(
-                    images_folder_id=gd_images_folder_id,
+                    gd_product_images_folder_id=gd_product_images_folder_id,
                     local_image_path=file_path
                 )
                 
@@ -153,7 +154,7 @@ def download_file(img_url, base_file_path, gd_images_folder_id):
         logger.error(f"Unexpected error while downloading image {img_url}: {str(e)}")
         return False
 
-def download_images(image_urls_list, gd_images_folder_id, max_retries=3):
+def download_images(image_details_to_downlaod, max_retries=3):
     """
     Download multiple images with retry logic.
     
@@ -168,8 +169,8 @@ def download_images(image_urls_list, gd_images_folder_id, max_retries=3):
     results = {}
     
     # coming img_urls_list as list of tuples like [(img_url), ]
-    for img_url_tuple in image_urls_list:
-        img_url = img_url_tuple[0]
+    for img_url, gd_product_images_folder_id in image_details_to_downlaod:
+        print("PRODUCT IMAGES FOLDER ID: ", gd_product_images_folder_id)
         
         # Skip empty URLs
         if not img_url:
@@ -198,7 +199,7 @@ def download_images(image_urls_list, gd_images_folder_id, max_retries=3):
             success = download_file(
                 img_url=img_url, 
                 base_file_path=f"{LOCAL_OUTPUT_FOLDER}/{LOCAL_IMAGES_FOLDER}", 
-                gd_images_folder_id=gd_images_folder_id
+                gd_product_images_folder_id=gd_product_images_folder_id
             )
         
         results[img_url] = success

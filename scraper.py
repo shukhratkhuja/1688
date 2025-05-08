@@ -5,12 +5,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 import subprocess
-from integrations.google_drive import upload_to_drive_and_get_link, get_or_create_folder
+from integrations.google_drive import upload_to_drive_and_get_link, get_or_create_folder, get_or_create_sub_subfolder
 from parser import parser
 
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 
 from utils.db_utils import update_row, insert_many, fetch_many
 from utils.log_config import get_logger
@@ -18,7 +17,6 @@ from utils.constants import (DB_NAME,
                              HEADLESS,
                               TABLE_PRODUCT_DATA, 
                               TABLE_PRODUCT_IMAGES, 
-                              TABLE_PRODUCT_URLS,
                               LOCAL_OUTPUT_FOLDER,
                               OXYLABS_USERNAME,
                               OXYLABS_PASSWORD,
@@ -101,7 +99,7 @@ def scrape(driver, url):
 
     return html
 
-def main(product_urls, gd_main_folder_id):
+def main(product_urls, gd_main_folder_id, gd_images_folder_id):
 
     # get masked driver
     driver = get_optimized_driver()
@@ -123,6 +121,10 @@ def main(product_urls, gd_main_folder_id):
         product_url = product_url[0]
 
         json_filename = extract_offer_id(url=product_url)
+
+        product_images_folder_name = json_filename
+        gd_product_images_folder_id = get_or_create_sub_subfolder(parent_id=gd_images_folder_id, folder_name=product_images_folder_name)
+
 
         scraper_result = scrape(driver, product_url)
         if scraper_result == 404:
@@ -171,6 +173,7 @@ def main(product_urls, gd_main_folder_id):
                 ("title_chn", title_chn),
                 ("product_attributes_chn", json_dumps(product_attributes_chn)),
                 ("text_details_chn", json_dumps(text_details_chn)),
+                ("gd_product_images_folder_id", gd_product_images_folder_id),
             ],
             where=[
                 ("product_url", "=", product_url)
@@ -202,8 +205,8 @@ def main(product_urls, gd_main_folder_id):
                     insert_many(
                         db=DB_NAME,
                         table=TABLE_PRODUCT_IMAGES,
-                        columns_list=["product_url","image_url"],
-                        data=[(product_url, img_url)],
+                        columns_list=["product_url","image_url", "gd_product_images_folder_id"],
+                        data=[(product_url, img_url, gd_product_images_folder_id)],
                         logger=logger
                     )
                 else:
@@ -220,7 +223,7 @@ def main(product_urls, gd_main_folder_id):
 
                     row_data = (image_url, image_filename, image_text, image_text_en, 
                             downloaded_status, text_extracted_status, text_translated_status,
-                            gd_img_url, product_url)
+                            gd_img_url, product_url, gd_product_images_folder_id)
 
                     insert_many(
                         db=DB_NAME,
@@ -234,7 +237,8 @@ def main(product_urls, gd_main_folder_id):
                             "text_extracted_status",
                             "text_translated_status",
                             "gd_img_url",
-                            "product_url"
+                            "product_url",
+                            "gd_product_images_folder_id"
                         ],
                         data=[row_data],
                         logger=logger
