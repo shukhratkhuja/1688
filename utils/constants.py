@@ -4,7 +4,6 @@ load_dotenv()
 
 # db 
 DB_NAME=os.getenv("LOCAL_DB", "product_data.db")
-TABLE_PRODUCT_URLS=os.getenv("TABLE_PRODUCT_URLS", "product_urls")
 TABLE_PRODUCT_DATA=os.getenv("TABLE_PRODUCT_DATA", "product_data")
 TABLE_PRODUCT_IMAGES=os.getenv("TABLE_PRODUCT_IMAGES", "product_images")
 

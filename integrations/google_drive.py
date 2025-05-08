@@ -11,13 +11,13 @@ logger = get_logger("GD", "app.log")
 def get_drive():
     # Auth
     gauth = GoogleAuth()
-    # gauth.LoadClientConfigFile("client_secrets.json")
+    gauth.LoadClientConfigFile("client_secrets.json")
 
-    # gauth.GetFlow()
-    # gauth.flow.params.update({
-    #     'access_type': 'offline',
-    #     'prompt': 'consent',
-    # })
+    gauth.GetFlow()
+    gauth.flow.params.update({
+        'access_type': 'offline',
+        'prompt': 'consent',
+    })
 
     # ✅ Load saved credentials if available
     gauth.LoadCredentialsFile("mycreds.txt")
@@ -32,7 +32,7 @@ def get_drive():
         # Initialize the saved credentials
         gauth.Authorize()
 
-    # gauth.SaveCredentialsFile("mycreds.txt")
+    gauth.SaveCredentialsFile("mycreds.txt")
 
     drive = GoogleDrive(gauth)
 
@@ -81,6 +81,28 @@ def get_or_create_subfolder(parent_id, folder_name):
     return folder['id']
 
 
+
+def get_or_create_sub_subfolder(parent_id, folder_name):
+
+    drive = get_drive()
+
+    query = f"title = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and '{parent_id}' in parents and trashed = false"
+    folder_list = drive.ListFile({'q': query}).GetList()
+
+    if folder_list:
+        return folder_list[0]['id']
+    
+    folder_metadata = {
+        'title': folder_name,
+        'mimeType': 'application/vnd.google-apps.folder',
+        'parents': [{'id': parent_id}]
+    }
+    folder = drive.CreateFile(folder_metadata)
+    folder.Upload()
+    return folder['id']
+
+
+
 def upload_or_update_file(folder_id, local_file_path):
     
     drive = get_drive()
@@ -116,7 +138,7 @@ def upload_or_update_file(folder_id, local_file_path):
 
 
 
-def upload_image_if_not_exists(images_folder_id, local_image_path, max_retries=3):
+def upload_image_if_not_exists(gd_product_images_folder_id, local_image_path, max_retries=3):
     """
     Upload an image to Google Drive if it doesn't already exist.
     
@@ -132,7 +154,7 @@ def upload_image_if_not_exists(images_folder_id, local_image_path, max_retries=3
     logger = get_logger("GD", "app.log")
     
     # Validate inputs
-    if not images_folder_id or not local_image_path:
+    if not gd_product_images_folder_id or not local_image_path:
         logger.error("Missing required parameters")
         return "parameter_error"
         
@@ -154,7 +176,7 @@ def upload_image_if_not_exists(images_folder_id, local_image_path, max_retries=3
             drive = get_drive()
             
             # Search for existing file
-            query = f"title = '{filename}' and '{images_folder_id}' in parents and trashed = false"
+            query = f"title = '{filename}' and '{gd_product_images_folder_id}' in parents and trashed = false"
             file_list = drive.ListFile({'q': query}).GetList()
 
             if file_list:
@@ -164,7 +186,7 @@ def upload_image_if_not_exists(images_folder_id, local_image_path, max_retries=3
             # Upload new file
             file = drive.CreateFile({
                 'title': filename,
-                'parents': [{'id': images_folder_id}]
+                'parents': [{'id': gd_product_images_folder_id}]
             })
             file.SetContentFile(local_image_path)
             file.Upload()

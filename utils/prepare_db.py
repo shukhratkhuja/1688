@@ -32,9 +32,13 @@ def main():
                 "product_attributes_en": "TEXT", # dumped json string
                 "text_details_chn": "TEXT", # dumped json string
                 "text_details_en": "TEXT", # dumped json string
+                "images_downloaded_status": "TEXT", # dumped json string
+                
                 # columns to check the process status
                 "notion_product_id": "TEXT",
                 "scraped_status": "BOOLEAN DEFAULT 0",
+                "product_images_downloaded_status": "BOOLEAN DEFAULT 0",
+                "gd_product_images_folder_id": "BOOLEAN DEFAULT 0",
                 "translated_status": "BOOLEAN DEFAULT 0",
                 "gd_file_url": "TEXT",
                 "uploaded_to_gd_status": "BOOLEAN DEFAULT 0",
@@ -58,6 +62,7 @@ def main():
                   "text_translated_status": "BOOLEAN DEFAULT 0",
                   "product_url": "TEXT",
                   "gd_img_url": "TEXT",
+                  "gd_product_images_folder_id": "TEXT",
                   "created_at": "DATETIME DEFAULT (datetime('now','localtime'))"
               },
               drop=False

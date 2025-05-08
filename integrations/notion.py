@@ -59,15 +59,24 @@ def get_urls():
         # print(resp)
         notion_product_id = resp["id"]
         primary_supplier_url = resp["properties"]["PRIMARY SUPPLIER "]["url"]
+
         data_collection.append((primary_supplier_url, notion_product_id))
     logger.info(f"❇️ Coming {len(data_collection)} new product_urls.")
     return data_collection 
         
-        
-def notion_update_json_content(page_id, gd_file_url):
+     
+
+def notion_update_json_content(page_id, gd_file_url, gd_product_images_folder_id):
 
     logger = get_logger("notion", "app.log")
     notion = Client(auth=NOTION_BEARER_TOKEN)
+
+    # if gd_product_images_folder_id == "0":
+    print("FILE ID", gd_product_images_folder_id)
+    if gd_product_images_folder_id:
+        gd_product_images_folder_url = f"https://drive.google.com/drive/folders/{gd_product_images_folder_id}"
+    else:
+        gd_product_images_folder_url = None
 
     notion.pages.update(
         page_id=page_id,
@@ -81,7 +90,11 @@ def notion_update_json_content(page_id, gd_file_url):
                         }
                     }
                 ]
+            },
+            "GD - ALL PHOTOS ": {
+                "url": gd_product_images_folder_url
             }
+
         }
     )
     logger.info(f"{page_id} page json data update with file {gd_file_url}")
