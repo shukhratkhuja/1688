@@ -333,11 +333,11 @@ def update_row(
             set_clause = build_set_clause(column_with_value)
             where_clause = build_where_clause(where)
 
-            query = f"""
-                UPDATE {table}
-                SET {set_clause}
-                {where_clause};
-            """
+            query = """
+                UPDATE %s
+                SET %s
+                %s;
+            """ % (table, set_clause, where_clause)
             logger.info(f"📤 Updating...:\n {query}")
             cursor.execute(query)
             connection.commit()
