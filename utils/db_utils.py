@@ -356,4 +356,3 @@ def update_row(
 # TESTING fetch_many
 # data = fetch_many(db="test.db", table="test_table", columns_list=["id", "data"])
 # print(data)
-

@@ -129,7 +129,7 @@ def main(product_urls, gd_main_folder_id, gd_images_folder_id):
 
 
         scraper_result = scrape(driver, product_url)
-        if scraper_result == 404:
+        if scraper_result == 404 or scraper_result == None:
             update_row(
             db=DB_NAME,
             table=TABLE_PRODUCT_DATA,
@@ -137,7 +137,7 @@ def main(product_urls, gd_main_folder_id, gd_images_folder_id):
                 ("scraped_status", "1"),
                 ("translated_status", "1"),
                 ("title_chn", "404"),
-                ("title_en", "Product removed"),
+                ("title_en", "Product removed or Invalid URL"),
                 ],
             where=[("product_url", "=", product_url)],
             logger=logger

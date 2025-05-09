@@ -49,7 +49,8 @@ def get_details(outer_dom):
                 # print(detail_img_url)
             
             text_detail = detail.text.strip()
-            if text_detail and text_detail != "":
+            if text_detail and len(text_detail) > 4:
+                text_detail = text_detail.replace("'", "")
                 text_details.append(text_detail)
     
 
