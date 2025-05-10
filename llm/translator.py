@@ -139,8 +139,8 @@ def translate_product_img_texts(img_details_to_translate):
         translated_data = translate_entry(system_prompt=SYSTEM_PROMPT, entry=image_text, client=client)
         print(translated_data)
         print("="*100)
-
-        translated_data = [line.replace("'", "''") for line in translated_data]
+        if translated_data:
+            translated_data = [line.replace("'", "''") for line in translated_data]
 
         update_row(
             db=DB_NAME,
