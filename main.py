@@ -241,7 +241,6 @@ def main():
                                           "image_text_en", 
                                           "gd_img_url"],
                             where=[
-                                ("text_translated_status","=","1"),
                                 ("product_url","=", product_url)
                             ]
                         )
