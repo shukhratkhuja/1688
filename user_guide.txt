@@ -1,0 +1,62 @@
+
+### USER GUIDE 
+
+🛠 How to Run the Script
+1. Open the Project
+Open the project folder using Visual Studio Code (VS Code).
+
+2. Activate the Virtual Environment
+Run the following command in the terminal:
+
+# in terminal
+venv/Scripts/activate
+3. Run the Script
+Use this command:
+
+# in terminal
+python main.py
+You don’t need to type the full command — after typing the first few letters, press the [TAB] key to auto-complete paths or file names. For example:
+
+
+python ma[TAB]
+will automatically complete to main.py.
+
+⚠️ Possible Errors and How to Fix Them
+1. Google Drive Folder Creation Fails
+Reason: This usually happens due to an authorization issue.
+Solution:
+
+Delete the mycreds file in the project folder.
+
+Then re-run the script to re-authorize access.
+
+2. Page Contains Data but Requires Login
+Sometimes the script may fail to find the required HTML element and stop with an error. This can happen if:
+
+The page is asking for login and the script cannot access the data.
+
+The script considers the URL invalid and skips it.
+
+✅ Solution 1 (if the script simply stopped):
+Just re-run the script. It will continue from where it left off.
+
+✅ Solution 2 (if the script marked the URL as bad):
+If you're sure the product exists on that URL, but it was marked as invalid (bad url), you’ll need to manually reset its status in the database.
+
+Steps:
+
+Open the product_data.db file using DB Browser for SQLite.
+
+Go to "Open Database" and select the product_data.db file located in the project directory.
+
+Click the "Execute SQL" tab.
+
+Run the following SQL command to reset the product’s status:
+
+UPDATE product_data SET scraped_status = 0 WHERE product_url = 'paste_the_product_url_here';
+Save the changes and close the database.
+
+Re-run the script.
+
+⚠️ Note: This step is rarely needed, because in most cases, the script fails gracefully when it can't find the required element.
+

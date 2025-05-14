@@ -4,6 +4,8 @@ import traceback  # bu juda foydali
 from logging import Logger
 import time
 from utils.log_config import get_logger
+
+
 def prepare_table(
         db: str, 
         table: str, 
@@ -258,7 +260,7 @@ def fetch_many(
                 LIMIT {limit}
                 OFFSET {offset};
             """
-
+            logger.info(f"FETCH MANY QUERY: {query}")
             cursor.execute(query)
             return cursor.fetchall()
     

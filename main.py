@@ -206,7 +206,8 @@ def main():
                               "notion_product_id"
                               ],
                 where=[("uploaded_to_gd_status", "=", "0"),
-                       ("translated_status","=","1")]
+                       ("translated_status","=","1")
+                       ]
             )
 
             if not_uploaded_product_data:

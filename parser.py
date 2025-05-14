@@ -88,13 +88,3 @@ def parser(html_text):
     product_data["img_details"] = img_details
 
     return product_data
-
-
-# def main():
-#     with open("page_source/current_page.html") as f:
-#             html = f.read()
-#             parsed_data = parser(html)
-#             print(parsed_data)
-
-
-# main()
