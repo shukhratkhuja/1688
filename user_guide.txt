@@ -60,3 +60,24 @@ Re-run the script.
 
 ⚠️ Note: This step is rarely needed, because in most cases, the script fails gracefully when it can't find the required element.
 
+Deleting multiple URLs from the database (we need to delete the most recently added URLs).
+
+First of all, in order to identify the incorrectly scraped products, we need to extract from the database the ones that have '404' as the value in the title_chn field. This is because when a URL does not exist on the site, is incorrect, or there is another error that prevents the page from being scraped, the value '404' is written to the title_chn field.
+
+So, we find the products in the product_data table where title_chn = '404':
+
+SELECT * FROM product_data WHERE title_chn = '404';
+
+From the results, we then identify the point where incorrect scraping started. Let’s assume that in the previous correct scraping run, all the products were scraped properly, and only the ones removed from the platform or unavailable were marked as '404'. However, in the most recent run, all the products were incorrectly scraped.
+We now need to find the first product with a '404' value that appeared after the last correct scraping. Once we find that product's ID, we delete all the products from the database with IDs greater than or equal to that value.
+
+For example:
+
+DELETE FROM product_data WHERE id >= 80;
+
+(You determine this ID manually from the first query.)
+
+Once these URLs are deleted, when the script is run again, it will insert the URLs into the database anew, and scraping will proceed.
+
+General Note:
+If the code crashes due to an error related to find_all (when it fails to find an HTML element), it usually means that the script was not able to fully render the HTML content via JavaScript. This is why the elements are not found.

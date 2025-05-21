@@ -82,7 +82,6 @@ def scrape(driver, url):
             return 404
         except:        
             return None
-    
     try:
         WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'content-detail')]"))
