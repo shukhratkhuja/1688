@@ -166,7 +166,8 @@ class DraculaTheme:
             QHeaderView::section {{
                 background-color: {cls.COLORS['current_line']};
                 color: {cls.COLORS['foreground']};
-                padding: 8px;
+                padding: 12px 16px;
+                min-height: 32px;
                 border: none;
                 border-right: 1px solid {cls.COLORS['background']};
                 font-weight: bold;

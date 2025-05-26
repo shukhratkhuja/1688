@@ -31,6 +31,7 @@ class ScrapingController(QObject):
     status_updated = pyqtSignal(str)  # status_message
     error_occurred = pyqtSignal(str)  # error_message
     
+
     def __init__(self):
         super().__init__()
         self.logger = get_logger("scraping_controller", "app.log")
@@ -53,10 +54,12 @@ class ScrapingController(QObject):
         self._progress_timer = QTimer()
         self._progress_timer.timeout.connect(self._update_progress)
     
+
     def is_processing(self):
         """Check if any process is currently running"""
         return self._is_processing
     
+
     def start_new_scraping(self):
         """Start new product scraping process"""
         if self._is_processing:
@@ -94,6 +97,7 @@ class ScrapingController(QObject):
             self._reset_process_state()
             return False
     
+
     def start_retake_process(self, selected_products=None):
         """Start retake process for failed products"""
         if self._is_processing:
@@ -145,6 +149,9 @@ class ScrapingController(QObject):
             self._reset_process_state()
             return False
     
+
+    # ScrapingController da stop_process funksiyasini o'zgartiring:
+
     def stop_process(self):
         """Stop current scraping process"""
         if not self._is_processing:
@@ -155,14 +162,19 @@ class ScrapingController(QObject):
             self._should_stop = True
             
             if self._worker_thread and self._worker_thread.isRunning():
+                # Graceful stop
                 self._worker_thread.stop_process()
                 
-                # Wait for thread to finish (max 10 seconds)
-                if not self._worker_thread.wait(10000):
-                    self.logger.warning("Worker thread did not stop gracefully, terminating...")
-                    self._worker_thread.terminate()
-                    self._worker_thread.wait()
+                # Wait for thread to finish (5 seconds max)
+                if self._worker_thread.wait(5000):
+                    self.logger.info("Worker thread stopped gracefully")
+                else:
+                    self.logger.warning("Worker thread timeout, force stopping...")
+                    # Force stop emas, faqat reset
+                    self._worker_thread.requestInterruption()
+                    self._worker_thread.wait(2000)  # 2 sekund kutish
             
+            # Reset state without force termination
             self._reset_process_state()
             self.status_updated.emit("Process stopped by user")
             self.logger.info("Process stopped successfully")
@@ -171,8 +183,11 @@ class ScrapingController(QObject):
             
         except Exception as e:
             self.logger.error(f"Error stopping process: {e}")
-            self.error_occurred.emit(f"Error stopping process: {str(e)}")
+            # Xatolik bo'lsa ham state ni reset qiling
+            self._reset_process_state()
+            self.error_occurred.emit(f"Process stopped with error: {str(e)}")
             return False
+
     
     def _connect_worker_signals(self):
         """Connect worker thread signals to controller slots"""
@@ -182,6 +197,7 @@ class ScrapingController(QObject):
             self._worker_thread.status_updated.connect(self._on_worker_status)
             self._worker_thread.error_occurred.connect(self._on_worker_error)
     
+
     def _reset_failed_products_status(self, failed_products):
         """Reset status columns for failed products"""
         try:
@@ -197,6 +213,7 @@ class ScrapingController(QObject):
             self.logger.error(f"Error resetting failed products status: {e}")
             raise
     
+
     def _update_progress(self):
         """Update progress information from database"""
         if not self._is_processing:
@@ -228,6 +245,7 @@ class ScrapingController(QObject):
         except Exception as e:
             self.logger.warning(f"Error updating progress: {e}")
     
+
     def _reset_process_state(self):
         """Reset controller state after process completion"""
         self._is_processing = False
@@ -236,6 +254,7 @@ class ScrapingController(QObject):
         self._worker_thread = None
         self._progress_timer.stop()
     
+
     def _on_worker_finished(self, success):
         """Handle worker thread completion"""
         process_name = self._current_process or "Unknown Process"
@@ -248,18 +267,22 @@ class ScrapingController(QObject):
         self.process_finished.emit(process_name, success)
         self._reset_process_state()
     
+
     def _on_worker_progress(self, current, total, message):
         """Handle progress updates from worker"""
         self.progress_updated.emit(current, total, message)
     
+
     def _on_worker_status(self, message):
         """Handle status updates from worker"""
         self.status_updated.emit(message)
     
+
     def _on_worker_error(self, error_message):
         """Handle error from worker"""
         self.logger.error(f"Worker error: {error_message}")
         self.error_occurred.emit(error_message)
+    
     
     def get_current_process_info(self):
         """Get information about current process"""
@@ -268,6 +291,7 @@ class ScrapingController(QObject):
             'process_type': self._current_process,
             'should_stop': self._should_stop
         }
+    
     
     def cleanup(self):
         """Cleanup resources before destruction"""

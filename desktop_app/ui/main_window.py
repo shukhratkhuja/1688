@@ -60,7 +60,7 @@ class MainWindow(QMainWindow):
         # UI refresh timer
         self.refresh_timer = QTimer()
         self.refresh_timer.timeout.connect(self.refresh_data)
-        self.refresh_timer.start(5000)  # Refresh every 2 seconds
+        self.refresh_timer.start(10000)  # Refresh every 5 seconds
         
         self.setup_ui()
         self.connect_signals()
@@ -425,27 +425,43 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """Handle application close event"""
-        if self.scraping_controller and self.scraping_controller.is_processing():
-            reply = QMessageBox.question(
-                self,
-                "Close Application",
-                "A scraping process is currently running.\n\n"
-                "Are you sure you want to close the application?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No
-            )
+        try:
+            if self.scraping_controller and self.scraping_controller.is_processing():
+                reply = QMessageBox.question(
+                    self,
+                    "Close Application",
+                    "A scraping process is currently running.\n\n"
+                    "Do you want to stop the process and close?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No
+                )
+                
+                if reply == QMessageBox.StandardButton.No:
+                    event.ignore()
+                    return
+                
+                # Gracefully stop the process
+                self.scraping_controller.stop_process()
+                
+                # Wait a bit for cleanup
+                import time
+                time.sleep(1)
             
-            if reply == QMessageBox.StandardButton.No:
-                event.ignore()
-                return
+            # Stop the refresh timer
+            if hasattr(self, 'refresh_timer'):
+                self.refresh_timer.stop()
             
-            # Stop the process before closing
-            self.scraping_controller.stop_process()
-        
-        # Stop the refresh timer
-        self.refresh_timer.stop()
-        
-        event.accept()
+            # Cleanup controllers
+            if hasattr(self, 'scraping_controller'):
+                self.scraping_controller.cleanup()
+            
+            self.logger.info("Application closing gracefully")
+            event.accept()
+            
+        except Exception as e:
+            print(f"Error during close: {e}")
+            # Force accept even with errors
+            event.accept()
     
     def _start_retake_for_selected(self, selected_products):
         """Start retake process for selected products"""

@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QTextEdit, QWidget, 
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
     QProgressBar, QFrame, QHeaderView, QCheckBox,
-    QAbstractItemView, QScrollArea, QMessageBox
+    QAbstractItemView, QScrollArea, QMessageBox, QMenu
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread
 from PyQt6.QtGui import QFont, QColor, QPalette
@@ -31,20 +31,70 @@ class ProductDataTable(QTableWidget):
     # Define column headers and their order
     COLUMNS = [
         ("ID", 60),
-        ("Product URL", 300),
-        ("Title (Chinese)", 200),
-        ("Title (English)", 200),
+        ("Product URL", 200),
+        ("Title (Chinese)", 150),
+        ("Title (English)", 150),
         ("Scraped", 80),
         ("Translated", 80),
         ("Uploaded to GD", 150),
         ("Updated on Notion", 150),
-        ("Created", 80)
+        ("Created", 120)
     ]
     
     def __init__(self):
         super().__init__()
         self.setup_table()
         self.apply_styling()
+
+    
+    def copy_url_text(self, url_text):
+        """Copy URL text to clipboard"""
+        from PyQt6.QtWidgets import QApplication
+        
+        clipboard = QApplication.clipboard()
+        clipboard.setText(url_text)
+        
+        # Success message (optional)
+        print(f"URL copied: {url_text}")
+
+    # ProductDataTable class ga yangi funksiyalar qo'shing:
+    def show_context_menu(self, position):
+        """Show context menu for table items"""
+        item = self.itemAt(position)
+        if item is None:
+            return
+        
+        # Faqat URL column (column 1) uchun context menu
+        if item.column() == 1:  # URL column
+            # URL text ni oldindan oling
+            url_text = item.text()  # BU MUHIM - oldindan oling
+            
+            menu = QMenu(self)
+            menu.setStyleSheet("""
+                QMenu {
+                    background-color: #44475a;
+                    color: #f8f8f2;
+                    border: 1px solid #6272a4;
+                    border-radius: 6px;
+                    padding: 4px;
+                }
+                QMenu::item {
+                    background-color: transparent;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                }
+                QMenu::item:selected {
+                    background-color: #bd93f9;
+                    color: #282a36;
+                }
+            """)
+            
+            copy_action = menu.addAction("📋 Copy URL")
+            # Lambda da item o'rniga url_text ishlatiladi
+            copy_action.triggered.connect(lambda: self.copy_url_text(url_text))
+            
+            menu.exec(self.mapToGlobal(position))
+
     
     def setup_table(self):
         """Initialize table structure"""
@@ -52,6 +102,10 @@ class ProductDataTable(QTableWidget):
         self.setColumnCount(len(self.COLUMNS))
         headers = [col[0] for col in self.COLUMNS]
         self.setHorizontalHeaderLabels(headers)
+
+         # Context menu uchun
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
         
         # Set column widths
         for i, (header, width) in enumerate(self.COLUMNS):
@@ -72,6 +126,7 @@ class ProductDataTable(QTableWidget):
         self.verticalHeader().setVisible(True)
     
     def apply_styling(self):
+
         """Apply Dracula theme styling"""
         self.setStyleSheet(DraculaTheme.get_table_style())
 
@@ -456,20 +511,164 @@ class RetakeDialog(QWidget):
         super().__init__(parent)
         self.failed_products = failed_products
         self.selected_products = []
+        
+        # Window properties
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        
+        # For dragging functionality
+        self.drag_position = None
+
+        # Window state tracking
+        self.is_maximized = False
+        self.normal_geometry = None
+
+        
         self.setup_dialog()
         self.apply_styling()
     
     def setup_dialog(self):
         """Initialize retake dialog"""
-        self.setWindowTitle("🔄 Select Products to Retake")
         self.setGeometry(200, 200, 1000, 700)
-        self.setWindowModality(Qt.WindowModality.ApplicationModal)
         
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        # Main layout with background frame
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(20, 20, 20, 20)
         
-        # Header
+        # Background frame with shadow effect
+        self.background_frame = QFrame()
+        self.background_frame.setObjectName("backgroundFrame")
+        self.background_frame.setStyleSheet("""
+            QFrame#backgroundFrame {
+                background-color: #282a36;
+                border: 2px solid #44475a;
+                border-radius: 12px;
+            }
+        """)
+        
+        # Shadow effect
+        from PyQt6.QtWidgets import QGraphicsDropShadowEffect
+        from PyQt6.QtGui import QColor
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(25)
+        shadow.setColor(QColor(0, 0, 0, 120))
+        shadow.setOffset(0, 8)
+        self.background_frame.setGraphicsEffect(shadow)
+        
+        main_layout.addWidget(self.background_frame)
+        
+        # Content layout inside background frame
+        content_layout = QVBoxLayout(self.background_frame)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+        
+        # Title bar with window controls
+        self.create_title_bar(content_layout)
+        
+        # Content area
+        self.create_content_area(content_layout)
+    
+    def create_title_bar(self, parent_layout):
+        """Create custom title bar with drag and window controls"""
+        title_bar = QFrame()
+        title_bar.setFixedHeight(50)
+        title_bar.setObjectName("titleBar")
+        title_bar.setStyleSheet("""
+            QFrame#titleBar {
+                background-color: #44475a;
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+                border-bottom: 1px solid #6272a4;
+            }
+        """)
+        
+        title_layout = QHBoxLayout(title_bar)
+        title_layout.setContentsMargins(15, 0, 10, 0)
+        
+        # Icon and title
+        title_icon = QLabel("🔄")
+        title_icon.setFont(QFont("Segoe UI", 14))
+        title_icon.setStyleSheet("color: #bd93f9;")
+        
+        title_text = QLabel("Retake Failed Products")
+        title_text.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        title_text.setStyleSheet("color: #f8f8f2; background: transparent;")
+        
+        title_layout.addWidget(title_icon)
+        title_layout.addWidget(title_text)
+        title_layout.addStretch()
+        
+        # Window control buttons
+        self.create_window_controls(title_layout)
+        
+        parent_layout.addWidget(title_bar)
+        
+        # Make title bar draggable
+        title_bar.mousePressEvent = self.title_bar_mouse_press
+        title_bar.mouseMoveEvent = self.title_bar_mouse_move
+        title_bar.mouseReleaseEvent = self.title_bar_mouse_release
+    
+       
+    # Window controls buttonlarni yangilang:
+    def create_window_controls(self, layout):
+        """Create minimize, maximize, close buttons"""
+        button_style = """
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                border-radius: 4px;
+                color: #f8f8f2;
+                font-size: 14px;
+                font-weight: bold;
+                width: 30px;
+                height: 30px;
+            }
+            QPushButton:hover {
+                background-color: #6272a4;
+            }
+            QPushButton:pressed {
+                background-color: #44475a;
+            }
+        """
+        
+        close_button_style = """
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                border-radius: 4px;
+                color: #f8f8f2;
+                font-size: 14px;
+                font-weight: bold;
+                width: 30px;
+                height: 30px;
+            }
+            QPushButton:hover {
+                background-color: #ff5555;
+                color: #ffffff;
+            }
+            QPushButton:pressed {
+                background-color: #ff4444;
+            }
+        """
+        
+        # Close button
+        close_btn = QPushButton("×")
+        close_btn.setStyleSheet(close_button_style)
+        close_btn.clicked.connect(self.close)
+        close_btn.setToolTip("Close")
+        
+        # Add buttons to layout
+        layout.addWidget(close_btn)
+
+        
+    def create_content_area(self, parent_layout):
+        """Create main content area"""
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(20, 15, 20, 20)
+        content_layout.setSpacing(15)
+        
+        # Header info
         header_frame = QFrame()
         header_frame.setStyleSheet("""
             QFrame {
@@ -480,17 +679,11 @@ class RetakeDialog(QWidget):
         """)
         header_layout = QVBoxLayout(header_frame)
         
-        title_label = QLabel("🔄 Retake Failed Products")
-        title_label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        title_label.setStyleSheet("color: #bd93f9; background: transparent; padding: 0;")
-        
         info_label = QLabel(f"Found {len(self.failed_products)} products with '404' status.\nSelect products you want to retake:")
         info_label.setFont(QFont("Segoe UI", 10))
         info_label.setStyleSheet("color: #f8f8f2; background: transparent; padding: 0;")
-        
-        header_layout.addWidget(title_label)
         header_layout.addWidget(info_label)
-        layout.addWidget(header_frame)
+        content_layout.addWidget(header_frame)
         
         # Selection controls
         controls_frame = QFrame()
@@ -510,13 +703,12 @@ class RetakeDialog(QWidget):
         controls_layout.addWidget(deselect_all_btn)
         controls_layout.addStretch()
         controls_layout.addWidget(selected_count_label)
-        
-        layout.addWidget(controls_frame)
+        content_layout.addWidget(controls_frame)
         
         # Product selection table
         self.selection_table = QTableWidget()
         self.setup_selection_table()
-        layout.addWidget(self.selection_table)
+        content_layout.addWidget(self.selection_table)
         
         # Action buttons
         button_frame = QFrame()
@@ -530,8 +722,9 @@ class RetakeDialog(QWidget):
         button_layout.addStretch()
         button_layout.addWidget(retake_btn)
         button_layout.addWidget(cancel_btn)
+        content_layout.addWidget(button_frame)
         
-        layout.addWidget(button_frame)
+        parent_layout.addWidget(content_widget)
         
         # Connect signals
         select_all_btn.clicked.connect(self.select_all)
@@ -540,7 +733,76 @@ class RetakeDialog(QWidget):
         cancel_btn.clicked.connect(self.close)
         
         # Connect table selection changes
-        self.selection_table.itemChanged.connect(self.update_selected_count)
+        # self.selection_table.itemChanged.connect(self.update_selected_count)
+    
+    # Title bar drag functionality
+    def title_bar_mouse_press(self, event):
+        """Handle title bar mouse press for dragging"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+    
+    def title_bar_mouse_move(self, event):
+        """Handle title bar mouse move for dragging"""
+        if (event.buttons() == Qt.MouseButton.LeftButton and 
+            self.drag_position is not None):
+            self.move(event.globalPosition().toPoint() - self.drag_position)
+            event.accept()
+    
+
+    def title_bar_mouse_release(self, event):
+        """Handle title bar mouse release"""
+        self.drag_position = None
+
+
+    # RetakeDialog class ga qo'shing:
+    def show_retake_context_menu(self, position):
+        """Show context menu for retake table items"""
+        item = self.selection_table.itemAt(position)
+        if item is None:
+            return
+        
+        # Faqat URL column (column 2) uchun context menu
+        if item.column() == 2:  # URL column in retake dialog
+            # URL text ni oldindan oling
+            url_text = item.text()  # BU MUHIM
+            
+            menu = QMenu(self)
+            menu.setStyleSheet("""
+                QMenu {
+                    background-color: #44475a;
+                    color: #f8f8f2;
+                    border: 1px solid #6272a4;
+                    border-radius: 6px;
+                    padding: 4px;
+                }
+                QMenu::item {
+                    background-color: transparent;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                }
+                QMenu::item:selected {
+                    background-color: #bd93f9;
+                    color: #282a36;
+                }
+            """)
+            
+            copy_action = menu.addAction("📋 Copy URL")
+            # url_text ishlatiladi, item emas
+            copy_action.triggered.connect(lambda: self.copy_retake_url_text(url_text))
+            
+            menu.exec(self.selection_table.mapToGlobal(position))
+
+
+    def copy_retake_url_text(self, url_text):
+        """Copy URL text to clipboard from retake table"""
+        from PyQt6.QtWidgets import QApplication
+        
+        clipboard = QApplication.clipboard()
+        clipboard.setText(url_text)
+        
+        print(f"URL copied: {url_text}")
+
     
     def setup_selection_table(self):
         """Setup the product selection table"""
@@ -548,11 +810,16 @@ class RetakeDialog(QWidget):
         self.selection_table.setColumnCount(len(headers))
         self.selection_table.setHorizontalHeaderLabels(headers)
         self.selection_table.setRowCount(len(self.failed_products))
+
+        # Context menu uchun
+        self.selection_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.selection_table.customContextMenuRequested.connect(self.show_retake_context_menu)
+
         
         # Table styling
         self.selection_table.setAlternatingRowColors(True)
         self.selection_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.selection_table.verticalHeader().setVisible(True)
+        self.selection_table.verticalHeader().setVisible(False)
         
         # Set column widths
         self.selection_table.setColumnWidth(0, 80)   # Checkbox
@@ -564,42 +831,34 @@ class RetakeDialog(QWidget):
         header = self.selection_table.horizontalHeader()
         header.setStretchLastSection(True)
         
-        CHECKBOX_STYLE = """
-                QCheckBox {
-                    spacing: 10px;
-                    color: #bd93f9; /* Dracula purple */
-                    font-size: 16px;
-                    font-family: 'Segoe UI', sans-serif;
-                }
-
-                QCheckBox::indicator {
-                    width: 20px;
-                    height: 20px;
-                    border: 2px solid #bd93f9;
-                    border-radius: 4px;
-                    background-color: transparent;
-                }
-
-                QCheckBox::indicator:checked {
-                    background-color: #bd93f9;
-                    image: url(:/qt-project.org/styles/commonstyle/images/checkbox_checked.png);
-                }
-
-                QCheckBox::indicator:unchecked:hover {
-                    border: 2px solid #ff79c6; /* Dracula pink on hover */
-                }
-                """
-
         # Populate table with failed products
         for row, product in enumerate(self.failed_products):
             # Checkbox for selection
             checkbox = QCheckBox()
             checkbox.setChecked(False)  # Select all by default
+            checkbox.setStyleSheet("""
+                QCheckBox {
+                    spacing: 5px;
+                    font-size: 10pt;
+                }
+                QCheckBox::indicator {
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid #6272a4;
+                    border-radius: 3px;
+                    background-color: #282a36;
+                }
+                QCheckBox::indicator:checked {
+                    background-color: #50fa7b;
+                    border-color: #50fa7b;
+                    image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDNMNC41IDguNUwyIDYiIHN0cm9rZT0iIzI4MmEzNiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+);
+                }
+                QCheckBox::indicator:hover {
+                    border-color: #bd93f9;
+                }
+            """)
             
-
-            checkbox.setStyleSheet(CHECKBOX_STYLE)
-
-            
+            checkbox.stateChanged.connect(self.update_selected_count)
             # Center checkbox in cell
             checkbox_widget = QWidget()
             checkbox_layout = QHBoxLayout(checkbox_widget)
@@ -607,8 +866,8 @@ class RetakeDialog(QWidget):
             checkbox_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
             checkbox_layout.setContentsMargins(0, 0, 0, 0)
             
+
             self.selection_table.setCellWidget(row, 0, checkbox_widget)
-            
             # Product data
             product_id = str(product[0]) if product[0] else "N/A"
             product_url = product[1] if len(product) > 1 else "N/A"
@@ -652,7 +911,7 @@ class RetakeDialog(QWidget):
         """Apply dialog styling"""
         self.setStyleSheet("""
             QWidget {
-                background-color: #282a36;
+                background-color: transparent;
                 color: #f8f8f2;
                 font-family: 'Segoe UI';
             }
@@ -696,24 +955,26 @@ class RetakeDialog(QWidget):
         """)
     
     def select_all(self):
-        """Select all products"""
         for row in range(self.selection_table.rowCount()):
             checkbox_widget = self.selection_table.cellWidget(row, 0)
             if checkbox_widget:
                 checkbox = checkbox_widget.findChild(QCheckBox)
                 if checkbox:
+                    checkbox.blockSignals(True)
                     checkbox.setChecked(True)
-        self.update_selected_count()
+                    checkbox.blockSignals(False)
+        self.update_selected_count()  # Manual call
     
     def deselect_all(self):
-        """Deselect all products"""
         for row in range(self.selection_table.rowCount()):
             checkbox_widget = self.selection_table.cellWidget(row, 0)
             if checkbox_widget:
                 checkbox = checkbox_widget.findChild(QCheckBox)
                 if checkbox:
+                    checkbox.blockSignals(True)
                     checkbox.setChecked(False)
-        self.update_selected_count()
+                    checkbox.blockSignals(False)
+        self.update_selected_count()  # Manual call
     
     def update_selected_count(self):
         """Update selected products count"""
@@ -756,7 +1017,6 @@ class RetakeDialog(QWidget):
         # Emit signal with selected products
         self.products_selected.emit(selected)
         self.close()
-
 
 class DatabaseStatsWidget(QFrame):
     """Widget showing database statistics"""

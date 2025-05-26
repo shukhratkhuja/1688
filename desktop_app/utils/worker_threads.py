@@ -45,9 +45,12 @@ class BaseWorkerThread(QThread):
         self._last_progress_time = 0
     
     def stop_process(self):
-        """Signal the worker to stop"""
+        """Signal the worker to stop gracefully"""
         self._should_stop = True
-        self.logger.info(f"Stop signal sent to {self.process_type} worker")
+        self.logger.info(f"Graceful stop requested for {self.process_type} worker")
+        
+        # Thread ni interrupt qilish o'rniga flag orqali to'xtatish
+        self.requestInterruption()
     
     def is_running(self):
         """Check if worker is currently running"""
@@ -74,7 +77,20 @@ class BaseWorkerThread(QThread):
     
     def run(self):
         """Main thread execution - to be overridden by subclasses"""
-        raise NotImplementedError("Subclasses must implement run method")
+        self._is_running = True
+        
+        try:
+            # Worker logic here
+            while not self._should_stop and not self.isInterruptionRequested():
+                # Processing work
+                time.sleep(0.1)  # Check stop flag regularly
+                
+        except Exception as e:
+            self.logger.error(f"Worker error: {e}")
+        finally:
+            self._is_running = False
+            self.finished.emit(True)  # Always emit finished signal
+
 
 
 class ScrapingWorkerThread(BaseWorkerThread):
