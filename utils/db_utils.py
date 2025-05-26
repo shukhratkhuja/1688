@@ -196,6 +196,7 @@ def fetch_many(
         table: str,
         columns_list: List[str],
         where: List[Tuple[str, str, str]] = [],
+        order_by: List[Tuple[str, str]] = [],
         limit: int = 999_999_999,
         offset: int = 0,
         logger: Logger = None
@@ -245,6 +246,14 @@ def fetch_many(
                 clause = f"{column} {operator} '{value}'"
             clauses.append(clause)
         return "WHERE " + " AND ".join(clauses) if clauses else ""
+    
+    def build_order_by_clause(order_by: List[Tuple[str, str]]) -> str:
+        clauses = []
+        for column, operator in order_by:
+            clause = f"{column} {operator}"
+            clauses.append(clause)
+        return "ORDER BY " + " , ".join(clauses) if clauses else ""
+
 
     try:
         with sqlite3.connect(db) as connection:
@@ -252,13 +261,15 @@ def fetch_many(
             
             columns_text = ", ".join(columns_list)
             where_clause_text = build_where_clause(where)
-
+            order_by_clause_text = build_order_by_clause(order_by)
             query = f"""
                 SELECT {columns_text}
                 FROM {table}
                 {where_clause_text}
+                {order_by_clause_text}
                 LIMIT {limit}
                 OFFSET {offset};
+
             """
             logger.info(f"FETCH MANY QUERY: {query}")
             cursor.execute(query)
