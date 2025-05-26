@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QProgressBar, QStatusBar, QMessageBox
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QSize
-from PyQt6.QtGui import QFont, QPalette, QColor
+from PyQt6.QtGui import QFont, QPalette, QColor, QGuiApplication
 
 # Add both desktop_app and project root to path
 desktop_dir = Path(__file__).parent
@@ -67,9 +67,14 @@ class MainWindow(QMainWindow):
         self.load_initial_data()
     
     def setup_ui(self):
+
+        # Ekran o‘lchamini olish
+        screen = QGuiApplication.primaryScreen()
+        size = screen.availableGeometry()
+
         """Initialize and setup the user interface"""
-        self.setWindowTitle("🔄 1688 Product Scraper - Professional Edition")
-        self.setGeometry(0, 0, 1620, 1080)
+        self.setWindowTitle("1688 Product Scraper - Professional Edition")
+        self.setGeometry(size)
         self.setMinimumSize(1200, 800)
         
         # Apply Dracula theme
@@ -101,14 +106,14 @@ class MainWindow(QMainWindow):
         header_layout.setContentsMargins(20, 10, 20, 10)
         
         # Title
-        title_label = QLabel("🔄 1688 Product Scraper")
+        title_label = QLabel("1688 Product Scraper")
         title_label.setStyleSheet(DraculaTheme.get_title_style())
         title_label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         
         # Action buttons
-        self.take_new_btn = ActionButton("🚀 Take New Products", "success")
-        self.retake_btn = ActionButton("🔄 Retake Failed (404)", "warning")
-        self.stop_btn = ActionButton("⏹️ Stop Process", "danger")
+        self.take_new_btn = ActionButton("Take New Products", "success")
+        self.retake_btn = ActionButton("Retake Failed (404)", "warning")
+        self.stop_btn = ActionButton("Stop Process", "danger")
         self.stop_btn.setEnabled(False)
         
         # Status indicators
@@ -168,7 +173,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(10, 10, 10, 10)
         
         # Panel header
-        header_label = QLabel("📊 Product Data - Real-time Updates")
+        header_label = QLabel("Product Data - Real-time Updates")
         header_label.setStyleSheet(DraculaTheme.get_panel_header_style())
         header_label.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         
@@ -189,7 +194,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(10, 10, 10, 10)
         
         # Panel header
-        header_label = QLabel("📝 System Logs - Live Feed")
+        header_label = QLabel("System Logs - Live Feed")
         header_label.setStyleSheet(DraculaTheme.get_panel_header_style())
         header_label.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         

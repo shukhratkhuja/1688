@@ -47,7 +47,7 @@ class DatabaseController:
             self.logger.log_exception(e, "database connection verification")
             raise
     
-    def get_products_for_display(self, limit: int = 1000) -> List[Tuple]:
+    def get_products_for_display(self, limit: int = 999_999) -> List[Tuple]:
         """Get product data for table display"""
         try:
             products = fetch_many(

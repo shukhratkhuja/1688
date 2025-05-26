@@ -31,14 +31,14 @@ class ProductDataTable(QTableWidget):
     # Define column headers and their order
     COLUMNS = [
         ("ID", 60),
-        ("Product URL", 200),
+        ("Product URL", 300),
         ("Title (Chinese)", 200),
         ("Title (English)", 200),
         ("Scraped", 80),
         ("Translated", 80),
-        ("Uploaded", 80),
-        ("Notion Updated", 100),
-        ("Created", 120)
+        ("Uploaded to GD", 150),
+        ("Updated on Notion", 150),
+        ("Created", 80)
     ]
     
     def __init__(self):
@@ -65,16 +65,18 @@ class ProductDataTable(QTableWidget):
         
         # Header behavior
         header = self.horizontalHeader()
-        header.setStretchLastSection(True)
+        header.setStretchLastSection(False)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # URL column stretches
         
         # Vertical header
-        self.verticalHeader().setVisible(False)
+        self.verticalHeader().setVisible(True)
     
     def apply_styling(self):
         """Apply Dracula theme styling"""
         self.setStyleSheet(DraculaTheme.get_table_style())
-    
+
+
+
     def update_data(self, products_data):
         """Update table with new product data"""
         self.setRowCount(len(products_data))
@@ -85,7 +87,7 @@ class ProductDataTable(QTableWidget):
                 product_id, url, title_chn, title_en, scraped, translated, uploaded, notion, created = product
             else:
                 # Handle dict format if needed
-                product_id = product.get('id', 0)
+                product_id = product.get('id', '')
                 url = product.get('product_url', '')
                 title_chn = product.get('title_chn', '')
                 title_en = product.get('title_en', '')
@@ -96,7 +98,7 @@ class ProductDataTable(QTableWidget):
                 created = product.get('created_at', '')
             
             # Set cell values
-            self.setItem(row, 0, self.create_cell_item(product_id, "number"))
+            self.setItem(row, 0, self.create_id_cell(product_id))
             self.setItem(row, 1, self.create_url_cell(url))
             self.setItem(row, 2, self.create_cell_item(title_chn or ""))
             self.setItem(row, 3, self.create_cell_item(title_en or ""))
@@ -108,6 +110,21 @@ class ProductDataTable(QTableWidget):
         
         # Sort by ID descending (newest first)
         self.sortItems(0, Qt.SortOrder.DescendingOrder)    
+
+
+    def create_id_cell(self, product_id):
+        """Create ID cell with proper numeric sorting"""
+        item = QTableWidgetItem(str(product_id))
+        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        
+        # Numeric sort uchun integer value o'rnatish
+        try:
+            numeric_id = int(product_id) if product_id else 0
+            item.setData(Qt.ItemDataRole.UserRole, numeric_id)
+        except (ValueError, TypeError):
+            item.setData(Qt.ItemDataRole.UserRole, 0)
+        
+        return item
 
     def create_cell_item(self, text, data_type="text"):
         """Create a standard table cell item with proper data type"""
@@ -123,6 +140,7 @@ class ProductDataTable(QTableWidget):
                 item.setData(Qt.ItemDataRole.UserRole, 0)
         
         return item
+
     
     def create_url_cell(self, url):
         """Create URL cell with special formatting"""
@@ -135,7 +153,7 @@ class ProductDataTable(QTableWidget):
     
     def create_status_cell(self, status):
         """Create status cell with colored indicators"""
-        status_text = "✅" if status else "⏳"
+        status_text = "✅" if status else "⚪️"
         item = self.create_cell_item(status_text)
         
         # Color coding
@@ -504,9 +522,9 @@ class RetakeDialog(QWidget):
         button_frame = QFrame()
         button_layout = QHBoxLayout(button_frame)
         
-        retake_btn = ActionButton("🚀 Retake Selected", "success")
+        retake_btn = ActionButton("Retake Selected", "success")
         retake_btn.setMinimumHeight(40)
-        cancel_btn = ActionButton("❌ Cancel", "danger")
+        cancel_btn = ActionButton("Cancel", "danger")
         cancel_btn.setMinimumHeight(40)
         
         button_layout.addStretch()
