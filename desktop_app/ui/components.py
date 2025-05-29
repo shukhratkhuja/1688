@@ -246,6 +246,7 @@ class ProductDataTable(QTableWidget):
             # Always re-enable updates
             self.setUpdatesEnabled(True)
             self.update()  # Force refresh
+            
     
     def _sort_products_descending(self, products_data):
         """ANIQ DESCENDING TARTIB: 121→120→119→118→...→99→98→97"""
@@ -314,8 +315,9 @@ class ProductDataTable(QTableWidget):
                 print(f"Error populating row {row}: {e}")
                 continue
 
+
     def create_id_cell(self, product_id):
-        """ANIQ ID CELL - DESCENDING ORDER uchun optimized"""
+        """INT SORTING uchun to'g'rilangan ID cell"""
         # Integer ga aylantirish
         try:
             numeric_id = int(product_id) if product_id is not None else 0
@@ -329,8 +331,9 @@ class ProductDataTable(QTableWidget):
         item = QTableWidgetItem()
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         
-        # TEXT sifatida o'rnatish (sorting muammosini oldini olish uchun)
-        item.setText(display_text)
+        # MUHIM: INT SORTING uchun numeric data o'rnatish
+        item.setData(Qt.ItemDataRole.DisplayRole, numeric_id)  # INT qiymat!
+        item.setData(Qt.ItemDataRole.UserRole, numeric_id)     # Backup INT
         
         # ID cell styling
         item.setBackground(QColor("#6272a4"))
@@ -571,7 +574,7 @@ class ProductDataTable(QTableWidget):
         
         # ID bo'yicha saralash
         try:
-            all_data.sort(key=lambda x: int(x[0]) if x[0].isdigit() else 0, reverse=True)
+            all_data.sort(key=lambda x: int(x[0]) if x[0].isdigit() else 0, reverse=False)
             
             # Qayta joylash
             self.setUpdatesEnabled(False)
