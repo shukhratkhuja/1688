@@ -13,7 +13,7 @@ from integrations.google_drive import (get_or_create_folder,
                                        get_or_create_sub_subfolder, 
                                        upload_to_drive_and_get_link)
 from integrations.notion import get_urls, notion_update_json_content
-from scraper import main as main_scraper
+from utils.scraper import main as main_scraper
 from utils.media_downloader import download_images
 from ocr.paddle_ocr import main as text_extraction
 from llm.translator import translate_product_data, translate_product_img_texts

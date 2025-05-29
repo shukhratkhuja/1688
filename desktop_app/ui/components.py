@@ -30,15 +30,15 @@ class ProductDataTable(QTableWidget):
     
     # Define column headers and their order
     COLUMNS = [
-        ("ID", 60),
+        ("ID", 70),
         ("Product URL", 200),
-        ("Title (Chinese)", 150),
-        ("Title (English)", 150),
+        ("Title (Chinese)", 180),
+        ("Title (English)", 180),
         ("Scraped", 80),
-        ("Translated", 80),
-        ("Uploaded to GD", 150),
-        ("Updated on Notion", 150),
-        ("Created", 120)
+        ("Translated", 100),
+        ("Upl to GD", 100),
+        ("Upd on N", 120),
+        ("Created", 100)
     ]
     
     def __init__(self):
@@ -57,53 +57,15 @@ class ProductDataTable(QTableWidget):
         # Success message (optional)
         print(f"URL copied: {url_text}")
 
-    # ProductDataTable class ga yangi funksiyalar qo'shing:
-    def show_context_menu(self, position):
-        """Show context menu for table items"""
-        item = self.itemAt(position)
-        if item is None:
-            return
-        
-        # Faqat URL column (column 1) uchun context menu
-        if item.column() == 1:  # URL column
-            # URL text ni oldindan oling
-            url_text = item.text()  # BU MUHIM - oldindan oling
-            
-            menu = QMenu(self)
-            menu.setStyleSheet("""
-                QMenu {
-                    background-color: #44475a;
-                    color: #f8f8f2;
-                    border: 1px solid #6272a4;
-                    border-radius: 6px;
-                    padding: 4px;
-                }
-                QMenu::item {
-                    background-color: transparent;
-                    padding: 8px 16px;
-                    border-radius: 4px;
-                }
-                QMenu::item:selected {
-                    background-color: #bd93f9;
-                    color: #282a36;
-                }
-            """)
-            
-            copy_action = menu.addAction("📋 Copy URL")
-            # Lambda da item o'rniga url_text ishlatiladi
-            copy_action.triggered.connect(lambda: self.copy_url_text(url_text))
-            
-            menu.exec(self.mapToGlobal(position))
 
-    
     def setup_table(self):
-        """Initialize table structure"""
+        """Initialize table structure - GUARANTEED DESCENDING SORT (1000→999→...→1→0)"""
         # Set column count and headers
         self.setColumnCount(len(self.COLUMNS))
         headers = [col[0] for col in self.COLUMNS]
         self.setHorizontalHeaderLabels(headers)
 
-         # Context menu uchun
+        # Context menu setup
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.show_context_menu)
         
@@ -111,127 +73,538 @@ class ProductDataTable(QTableWidget):
         for i, (header, width) in enumerate(self.COLUMNS):
             self.setColumnWidth(i, width)
         
-        # Table behavior
+        # Table behavior settings
         self.setAlternatingRowColors(True)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.setSortingEnabled(True)
         
-        # Header behavior
+        # MUHIM: Sorting BUTUNLAY O'CHIRILGAN - faqat manual control
+        self.setSortingEnabled(False)
+        
+        # Header configuration
         header = self.horizontalHeader()
         header.setStretchLastSection(False)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # URL column stretches
+        header.setHighlightSections(False)  # Hover effect disabled
         
-        # Vertical header
-        self.verticalHeader().setVisible(True)
+        # Header click events o'chirish (XAVFSIZ usul)
+        try:
+            # Agar signal mavjud bo'lsa, custom handler o'rnatish
+            header.sectionClicked.connect(self._ignore_header_click)
+        except:
+            # Agar xato bo'lsa, e'tibor bermaslik
+            pass
+        
+        # Vertical header configuration
+        v_header = self.verticalHeader()
+        v_header.setVisible(False)  # Hide row numbers for cleaner look
+        
+        # Grid and visual settings
+        self.setShowGrid(True)
+        self.setCornerButtonEnabled(False)
+        
+        # Performance optimizations
+        self.setUpdatesEnabled(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+
+    def show_context_menu(self, position):
+        """Show context menu for table items - optimized version"""
+        item = self.itemAt(position)
+        if item is None or item.column() != 1:  # Only for URL column
+            return
+        
+        url_text = item.text()
+        if not url_text:
+            return
+        
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #44475a;
+                color: #f8f8f2;
+                border: 1px solid #6272a4;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                background-color: transparent;
+                padding: 12px 16px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #bd93f9;
+                color: #282a36;
+            }
+        """)
+        
+        copy_action = menu.addAction("📋 Copy URL")
+        copy_action.triggered.connect(lambda: self.copy_url_text(url_text))
+        
+        menu.exec(self.mapToGlobal(position))
+
     
+    # CSS styling ni ham yangilang:
     def apply_styling(self):
-
         """Apply Dracula theme styling"""
-        self.setStyleSheet(DraculaTheme.get_table_style())
-
+        self.setStyleSheet("""
+            QTableWidget {
+                background-color: #282a36;
+                color: #f8f8f2;
+                gridline-color: #44475a;
+                border: 1px solid #44475a;
+                border-radius: 6px;
+                selection-background-color: #bd93f9;
+                selection-color: #282a36;
+                font-size: 9pt;
+                outline: none;
+            }
+            
+            /* Vertical header ni butunlay yashirish */
+            QHeaderView::section:vertical {
+                width: 0px;
+                border: none;
+                background: transparent;
+            }
+            
+            QHeaderView::section {
+                background-color: #44475a;
+                color: #f8f8f2;
+                padding: 6px 6px;
+                margin: 0px;
+                border: none;
+                border-right: 1px solid #6272a4;
+                border-bottom: 1px solid #6272a4;
+                font-weight: bold;
+                font-size: 9pt;
+                text-align: center;
+                min-height: 32px;
+            }
+            
+            /* ID column header */
+            QHeaderView::section:first {
+                min-width: 60px;
+                max-width: 72px;
+                text-align: center;
+                padding: 8px 4px;
+            }
+            
+            QHeaderView::section:hover {
+                background-color: #6272a4;
+            }
+            
+            QTableWidget::item {
+                padding: 8px 6px;
+                border-bottom: 1px solid #44475a;
+                border-right: 1px solid #44475a;
+                text-align: center;
+                min-height: 32px;
+            }
+            
+            QTableWidget::item:selected {
+                background-color: #bd93f9;
+                color: #282a36;
+            }
+            
+            QTableWidget::item:alternate {
+                background-color: rgba(68, 71, 90, 0.3);
+            }
+            
+            /* Focus border ni olib tashlash */
+            QTableWidget:focus {
+                border: 1px solid #44475a;
+            }
+        """)
 
 
     def update_data(self, products_data):
-        """Update table with new product data"""
-        self.setRowCount(len(products_data))
+        """Update table with new product data - EXACT DESCENDING ORDER (121→120→119...)"""
+        if not products_data:
+            self.setRowCount(0)
+            return
         
-        for row, product in enumerate(products_data):
-            # Extract data from product tuple/dict
-            if isinstance(product, (tuple, list)):
-                product_id, url, title_chn, title_en, scraped, translated, uploaded, notion, created = product
-            else:
-                # Handle dict format if needed
-                product_id = product.get('id', '')
-                url = product.get('product_url', '')
-                title_chn = product.get('title_chn', '')
-                title_en = product.get('title_en', '')
-                scraped = product.get('scraped_status', 0)
-                translated = product.get('translated_status', 0)
-                uploaded = product.get('uploaded_to_gd_status', 0)
-                notion = product.get('updated_on_notion_status', 0)
-                created = product.get('created_at', '')
+        # Disable updates during batch operation for performance
+        self.setUpdatesEnabled(False)
+        self.setSortingEnabled(False)  # Disable sorting during update
+        
+        try:
+            # MUHIM: Aynan 121, 120, 119, 118... tartibda saralash
+            sorted_products = self._sort_products_descending(products_data)
             
-            # Set cell values
-            self.setItem(row, 0, self.create_id_cell(product_id))
-            self.setItem(row, 1, self.create_url_cell(url))
-            self.setItem(row, 2, self.create_cell_item(title_chn or ""))
-            self.setItem(row, 3, self.create_cell_item(title_en or ""))
-            self.setItem(row, 4, self.create_status_cell(scraped))
-            self.setItem(row, 5, self.create_status_cell(translated))
-            self.setItem(row, 6, self.create_status_cell(uploaded))
-            self.setItem(row, 7, self.create_status_cell(notion))
-            self.setItem(row, 8, self.create_cell_item(self.format_datetime(created)))
-        
-        # Sort by ID descending (newest first)
-        self.sortItems(0, Qt.SortOrder.DescendingOrder)    
-
+            # Set row count
+            self.setRowCount(len(sorted_products))
+            
+            # Batch insert all data in exact order
+            self._populate_table_data(sorted_products)
+            
+            # Enable sorting AFTER data is populated
+            self.setSortingEnabled(True)
+            
+            # FORCE descending sort by ID (121→120→119→118...)
+            self.sortItems(0, Qt.SortOrder.DescendingOrder)
+            
+        finally:
+            # Always re-enable updates
+            self.setUpdatesEnabled(True)
+            self.update()  # Force refresh
+    
+    def _sort_products_descending(self, products_data):
+        """ANIQ DESCENDING TARTIB: 121→120→119→118→...→99→98→97"""
+        try:
+            def get_numeric_id(product):
+                """Extract numeric ID for sorting"""
+                if isinstance(product, (tuple, list)):
+                    product_id = product[0]
+                else:
+                    product_id = product.get('id', 0)
+                
+                # Convert to integer, handle various formats
+                if product_id is None:
+                    return 0
+                
+                try:
+                    return int(product_id)
+                except (ValueError, TypeError):
+                    return 0
+            
+            # MUHIM: reverse=True -> DESCENDING order (121, 120, 119, 118...)
+            sorted_data = sorted(products_data, key=get_numeric_id, reverse=True)
+            
+            # Debug: birinchi 5 ta ID ni ko'rsatish
+            if sorted_data:
+                first_5_ids = [get_numeric_id(p) for p in sorted_data[:5]]
+                print(f"Saralangan ID lar (birinchi 5 ta): {first_5_ids}")
+            
+            return sorted_data
+            
+        except Exception as e:
+            print(f"Saralash xatosi: {e}")
+            return products_data
+    
+    def _populate_table_data(self, sorted_products):
+        """Efficiently populate table with sorted data"""
+        for row, product in enumerate(sorted_products):
+            try:
+                # Extract data from product tuple/dict
+                if isinstance(product, (tuple, list)):
+                    product_id, url, title_chn, title_en, scraped, translated, uploaded, notion, created = product
+                else:
+                    # Handle dict format
+                    product_id = product.get('id', 0)
+                    url = product.get('product_url', '')
+                    title_chn = product.get('title_chn', '')
+                    title_en = product.get('title_en', '')
+                    scraped = product.get('scraped_status', 0)
+                    translated = product.get('translated_status', 0)
+                    uploaded = product.get('uploaded_to_gd_status', 0)
+                    notion = product.get('updated_on_notion_status', 0)
+                    created = product.get('created_at', '')
+                
+                # Create and set items efficiently
+                self.setItem(row, 0, self.create_id_cell(product_id))
+                self.setItem(row, 1, self.create_url_cell(url))
+                self.setItem(row, 2, self.create_cell_item(title_chn or ""))
+                self.setItem(row, 3, self.create_cell_item(title_en or ""))
+                self.setItem(row, 4, self.create_status_cell(scraped))
+                self.setItem(row, 5, self.create_status_cell(translated))
+                self.setItem(row, 6, self.create_status_cell(uploaded))
+                self.setItem(row, 7, self.create_status_cell(notion))
+                self.setItem(row, 8, self.create_cell_item(self.format_datetime(created)))
+                
+            except Exception as e:
+                print(f"Error populating row {row}: {e}")
+                continue
 
     def create_id_cell(self, product_id):
-        """Create ID cell with proper numeric sorting"""
-        item = QTableWidgetItem(str(product_id))
+        """ANIQ ID CELL - DESCENDING ORDER uchun optimized"""
+        # Integer ga aylantirish
+        try:
+            numeric_id = int(product_id) if product_id is not None else 0
+        except (ValueError, TypeError):
+            numeric_id = 0
+        
+        # Display text
+        display_text = str(numeric_id)
+        
+        # QTableWidgetItem yaratish
+        item = QTableWidgetItem()
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         
-        # Numeric sort uchun integer value o'rnatish
-        try:
-            numeric_id = int(product_id) if product_id else 0
-            item.setData(Qt.ItemDataRole.UserRole, numeric_id)
-        except (ValueError, TypeError):
-            item.setData(Qt.ItemDataRole.UserRole, 0)
+        # TEXT sifatida o'rnatish (sorting muammosini oldini olish uchun)
+        item.setText(display_text)
+        
+        # ID cell styling
+        item.setBackground(QColor("#6272a4"))
+        item.setForeground(QColor("#f8f8f2"))
         
         return item
 
     def create_cell_item(self, text, data_type="text"):
-        """Create a standard table cell item with proper data type"""
-        item = QTableWidgetItem(str(text))
+        """Create a standard table cell item - OPTIMIZED"""
+        display_text = str(text) if text is not None else ""
+        item = QTableWidgetItem(display_text)
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         
-        # Data type ga qarab sort qilish uchun data o'rnatish
+        # Set appropriate data for sorting
         if data_type == "number":
             try:
-                # Number sifatida sort qilish uchun
-                item.setData(Qt.ItemDataRole.UserRole, int(text))
+                numeric_val = int(text) if text else 0
+                item.setData(Qt.ItemDataRole.UserRole, numeric_val)
             except (ValueError, TypeError):
                 item.setData(Qt.ItemDataRole.UserRole, 0)
+        else:
+            # Text data uchun ham UserRole o'rnatamiz
+            item.setData(Qt.ItemDataRole.UserRole, display_text)
         
         return item
 
-    
     def create_url_cell(self, url):
-        """Create URL cell with special formatting"""
-        item = self.create_cell_item(url)
-        # Highlight 404 URLs
-        if "404" in str(url) or not url:
+        """Create URL cell with special formatting - OPTIMIZED"""
+        url_text = str(url) if url else ""
+        item = self.create_cell_item(url_text)
+        
+        # Highlight problematic URLs
+        if "404" in url_text or not url_text.strip():
             item.setBackground(QColor("#ff5555"))
             item.setForeground(QColor("#ffffff"))
+        elif url_text.startswith("http"):
+            # Valid URL styling
+            item.setForeground(QColor("#8be9fd"))
+        
         return item
     
     def create_status_cell(self, status):
-        """Create status cell with colored indicators"""
-        status_text = "✅" if status else "⚪️"
-        item = self.create_cell_item(status_text)
+        """Create status cell with colored indicators - OPTIMIZED"""
+        # Use boolean check for consistency
+        is_completed = bool(status)
+        status_text = "✅" if is_completed else "⚪"
         
-        # Color coding
-        if status:
-            item.setBackground(QColor("#50fa7b"))
+        item = QTableWidgetItem(status_text)
+        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        
+        # Set sorting data
+        item.setData(Qt.ItemDataRole.UserRole, 1 if is_completed else 0)
+        
+        # Color coding with better contrast
+        if is_completed:
+            item.setBackground(QColor("#50fa7b"))  # Green for completed
             item.setForeground(QColor("#282a36"))
         else:
-            item.setBackground(QColor("#ffb86c"))
+            item.setBackground(QColor("#ffb86c"))  # Orange for pending
             item.setForeground(QColor("#282a36"))
         
         return item
     
     def format_datetime(self, dt_str):
-        """Format datetime string for display"""
+        """Format datetime string for display - OPTIMIZED"""
         if not dt_str:
             return ""
+        
         try:
-            # Parse and format datetime
-            dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+            # Handle different datetime formats
+            if isinstance(dt_str, str):
+                # Remove 'Z' and handle timezone
+                clean_dt = dt_str.replace('Z', '+00:00')
+                dt = datetime.fromisoformat(clean_dt)
+            else:
+                dt = dt_str
+            
+            # Format as MM/DD HH:MM
             return dt.strftime("%m/%d %H:%M")
-        except:
-            return str(dt_str)[:16]  # Fallback to first 16 chars
+        except Exception as e:
+            # Fallback: return first 16 characters
+            return str(dt_str)[:16]
 
+    def apply_styling(self):
+        """Apply Dracula theme styling - OPTIMIZED"""
+        self.setStyleSheet("""
+            QTableWidget {
+                background-color: #282a36;
+                color: #f8f8f2;
+                gridline-color: #44475a;
+                border: 1px solid #44475a;
+                border-radius: 6px;
+                selection-background-color: #bd93f9;
+                selection-color: #282a36;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 9pt;
+                outline: none;
+            }
+            
+            /* Header styling */
+            QHeaderView::section {
+                background-color: #44475a;
+                color: #f8f8f2;
+                padding: 8px 6px;
+                margin: 0px;
+                border: none;
+                border-right: 1px solid #6272a4;
+                border-bottom: 1px solid #6272a4;
+                font-weight: bold;
+                font-size: 9pt;
+                text-align: center;
+                min-height: 28px;
+            }
+            
+            /* ID column header special styling */
+            QHeaderView::section:first {
+                background-color: #6272a4;
+                color: #f8f8f2;
+                font-weight: bold;
+                min-width: 60px;
+                max-width: 80px;
+            }
+            
+            QHeaderView::section:hover {
+                background-color: #6272a4;
+                color: #f8f8f2;
+            }
+            
+            /* Table cells */
+            QTableWidget::item {
+                padding: 6px 8px;
+                border-bottom: 1px solid #44475a;
+                border-right: 1px solid #44475a;
+                min-height: 28px;
+                text-align: center;
+            }
+            
+            QTableWidget::item:selected {
+                background-color: #bd93f9;
+                color: #282a36;
+                font-weight: bold;
+            }
+            
+            QTableWidget::item:alternate {
+                background-color: rgba(68, 71, 90, 0.2);
+            }
+            
+            /* Focus styling */
+            QTableWidget:focus {
+                border: 2px solid #bd93f9;
+            }
+            
+            /* Scrollbar styling */
+            QScrollBar:vertical {
+                background-color: #44475a;
+                width: 12px;
+                border-radius: 6px;
+            }
+            
+            QScrollBar::handle:vertical {
+                background-color: #6272a4;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            
+            QScrollBar::handle:vertical:hover {
+                background-color: #bd93f9;
+            }
+        """)
+
+    # Additional utility methods
+    def refresh_data(self, products_data):
+        """Ma'lumotlarni yangilash - ANIQ DESCENDING ORDER bilan"""
+        print("🔄 Ma'lumotlar yangilanmoqda...")
+        self.update_data(products_data)
+        self.verify_sort_order()
+    
+    def verify_sort_order(self):
+        """Saralash tartibini tekshirish"""
+        if self.rowCount() == 0:
+            print("📋 Jadval bo'sh")
+            return
+        
+        print(f"📊 Jadval holati:")
+        print(f"   - Jami qatorlar: {self.rowCount()}")
+        
+        # Birinchi va oxirgi ID larni olish
+        if self.rowCount() > 0:
+            first_item = self.item(0, 0)
+            last_item = self.item(self.rowCount()-1, 0)
+            
+            if first_item and last_item:
+                first_id = first_item.text()
+                last_id = last_item.text()
+                
+                print(f"   - Birinchi ID: {first_id}")
+                print(f"   - Oxirgi ID: {last_id}")
+                
+                # Tartib tekshiruvi
+                try:
+                    first_num = int(first_id)
+                    last_num = int(last_id)
+                    
+                    if first_num > last_num:
+                        print("   ✅ Tartib: DESCENDING (to'g'ri)")
+                    else:
+                        print("   ❌ Tartib: ASCENDING (noto'g'ri)")
+                        print("   🔧 Manual tuzatish kerak!")
+                        
+                except:
+                    print("   ⚠️ ID larni tekshirib bo'lmadi")
+        
+        # Birinchi 10 ta ID ni ko'rsatish
+        if self.rowCount() >= 10:
+            first_10_ids = []
+            for i in range(10):
+                item = self.item(i, 0)
+                if item:
+                    first_10_ids.append(item.text())
+            
+            print(f"   📝 Birinchi 10 ta ID: {' → '.join(first_10_ids)}")
+    
+    def manual_descending_fix(self):
+        """Agar saralash noto'g'ri bo'lsa, manual tuzatish"""
+        print("🔧 Manual DESCENDING saralash...")
+        
+        # Barcha ma'lumotlarni olish
+        all_data = []
+        for row in range(self.rowCount()):
+            row_data = []
+            for col in range(self.columnCount()):
+                item = self.item(row, col)
+                if item:
+                    row_data.append(item.text())
+                else:
+                    row_data.append("")
+            all_data.append(row_data)
+        
+        # ID bo'yicha saralash
+        try:
+            all_data.sort(key=lambda x: int(x[0]) if x[0].isdigit() else 0, reverse=True)
+            
+            # Qayta joylash
+            self.setUpdatesEnabled(False)
+            for row, row_data in enumerate(all_data):
+                for col, cell_data in enumerate(row_data):
+                    item = QTableWidgetItem(cell_data)
+                    if col == 0:  # ID column
+                        item.setBackground(QColor("#6272a4"))
+                        item.setForeground(QColor("#f8f8f2"))
+                    self.setItem(row, col, item)
+            
+            self.setUpdatesEnabled(True)
+            print("✅ Manual saralash tugadi!")
+            
+        except Exception as e:
+            print(f"❌ Manual saralash xatosi: {e}")
+    
+    def get_selected_product_id(self):
+        """Tanlangan mahsulot ID sini olish"""
+        current_row = self.currentRow()
+        if current_row >= 0:
+            id_item = self.item(current_row, 0)
+            if id_item:
+                return id_item.text()
+        return None
+    
+    def clear_table(self):
+        """Jadvalni tozalash"""
+        self.setUpdatesEnabled(False)
+        self.clearContents()
+        self.setRowCount(0)
+        self.setUpdatesEnabled(True)
+        print("🗑️ Jadval tozalandi")
 
 class LogViewer(QTextEdit):
     """Real-time log viewer with auto-scroll and syntax highlighting"""
@@ -295,7 +668,8 @@ class LogViewer(QTextEdit):
                     self.moveCursor(self.textCursor().End)
         except Exception as e:
             pass  # Silently handle file access errors
-    
+
+
     def append_colored_log(self, text):
         """Add colored log text based on log level"""
         lines = text.strip().split('\n')

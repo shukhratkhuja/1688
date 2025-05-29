@@ -64,7 +64,7 @@ class DatabaseController:
                     "updated_on_notion_status",
                     "created_at"
                 ],
-                order_by=[("id", "DESC")],
+                order_by=[("CAST(id AS INTEGER)", "DESC")],
                 limit=limit,
                 logger=self.logger
             )

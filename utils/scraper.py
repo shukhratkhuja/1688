@@ -6,7 +6,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 import subprocess
 from integrations.google_drive import upload_to_drive_and_get_link, get_or_create_folder, get_or_create_sub_subfolder
-from parser import parser
+from utils.parser import parser
 
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

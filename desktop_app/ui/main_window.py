@@ -41,6 +41,15 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         
+        # Logger ni oldindan yaratish
+        try:
+            from utils.log_config import get_logger
+            self.logger = get_logger("main_window", "app.log")
+        except ImportError:
+            # Fallback logging
+            import logging
+            self.logger = logging.getLogger("main_window")
+
         # Initialize controllers
         try:
             self.scraping_controller = ScrapingController()
