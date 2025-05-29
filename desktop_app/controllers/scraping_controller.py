@@ -17,7 +17,7 @@ sys.path.insert(0, str(project_root)) # For original utils
 from utils.log_config import get_logger
 from main import main as go_main
  
-from controllers.database_controller import DatabaseController
+from desktop_app.controllers.database_controller import DatabaseController
 from desktop_app.utils.worker_threads import ScrapingWorkerThread, RetakeWorkerThread
 
 

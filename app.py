@@ -21,7 +21,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 
 # Endi import qilish
-from ui.main_window import MainWindow
+from desktop_app.ui.main_window import MainWindow
 
 
 class ScrapingApplication(QApplication):

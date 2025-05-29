@@ -19,13 +19,13 @@ sys.path.insert(0, str(desktop_dir))  # For desktop_app modules
 sys.path.insert(0, str(project_root)) # For original utils
 
 # Import components 
-from ui.components import (
+from desktop_app.ui.components import (
     ProductDataTable, LogViewer, StatusPanel, 
-    ActionButton, ModernProgressBar
+    ActionButton, ModernProgressBar, RetakeDialog
 )
-from ui.styles import DraculaTheme
-from controllers.scraping_controller import ScrapingController
-from controllers.database_controller import DatabaseController
+from desktop_app.ui.styles import DraculaTheme
+from desktop_app.controllers.scraping_controller import ScrapingController
+from desktop_app.controllers.database_controller import DatabaseController
 
 
 
@@ -358,7 +358,6 @@ class MainWindow(QMainWindow):
             return
         
         # Show retake selection dialog
-        from ui.components import RetakeDialog
         retake_dialog = RetakeDialog(failed_products, self)
         retake_dialog.products_selected.connect(self._start_retake_for_selected)
         retake_dialog.show()

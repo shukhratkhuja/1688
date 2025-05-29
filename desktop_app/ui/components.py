@@ -21,7 +21,7 @@ sys.path.insert(0, str(desktop_dir))  # For desktop_app modules
 sys.path.insert(0, str(project_root)) # For original utils
 
 
-from ui.styles import DraculaTheme
+from desktop_app.ui.styles import DraculaTheme
 
 
 
