@@ -21,12 +21,14 @@ from utils.constants import DB_NAME, TABLE_PRODUCT_DATA, TABLE_PRODUCT_IMAGES
 
 class DatabaseController:
     """Controller for database operations with error handling and logging"""
-    
+
+
     def __init__(self):
         self.logger = get_logger("database_controller", "app.log")
         self.db_path = DB_NAME
         self._verify_database_connection()
     
+
     def _verify_database_connection(self):
         """Verify database exists and is accessible"""
         try:
@@ -47,6 +49,7 @@ class DatabaseController:
             self.logger.log_exception(e, "database connection verification")
             raise
     
+
     def get_products_for_display(self, limit: int = 999_999) -> List[Tuple]:
         """Get product data for table display"""
         try:
@@ -75,6 +78,7 @@ class DatabaseController:
             self.logger.log_exception(e, "getting products for display")
             return []
     
+
     def get_failed_products(self) -> List[Tuple]:
         """Get products with '404' status (failed products)"""
         try:
@@ -98,6 +102,7 @@ class DatabaseController:
             self.logger.log_exception(e, "getting failed products")
             return []
     
+
     def get_failed_products_count(self) -> int:
         """Get count of products with '404' status"""
         try:
@@ -114,6 +119,7 @@ class DatabaseController:
             self.logger.log_exception(e, "getting failed products count")
             return 0
     
+
     def get_total_products(self) -> int:
         """Get total number of products in database"""
         try:
@@ -127,6 +133,7 @@ class DatabaseController:
             self.logger.log_exception(e, "getting total products")
             return 0
     
+
     def get_processing_stats(self) -> Dict[str, int]:
         """Get comprehensive processing statistics"""
         try:
@@ -186,6 +193,7 @@ class DatabaseController:
                 'is_processing': False
             }
     
+
     def reset_product_status(self, product_url: str) -> bool:
         """Reset all status columns for a specific product"""
         try:
@@ -219,6 +227,7 @@ class DatabaseController:
             self.logger.log_exception(e, f"resetting status for product {product_url}")
             return False
     
+    
     def reset_all_failed_products(self) -> int:
         """Reset status for all products with '404' status"""
         try:
@@ -237,6 +246,7 @@ class DatabaseController:
             self.logger.log_exception(e, "resetting all failed products")
             return 0
     
+
     def get_recent_activity(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Get recent database activity within specified hours"""
         try:
@@ -278,6 +288,7 @@ class DatabaseController:
             self.logger.log_exception(e, "getting recent activity")
             return []
     
+
     def get_products_by_status(self, status_column: str, status_value: Any) -> List[Tuple]:
         """Get products filtered by specific status column"""
         try:
@@ -300,7 +311,6 @@ class DatabaseController:
                 ],
                 where=[(status_column, "=", status_value)],
                 order_by=[("id", "DESC")],
-                limit=500,
                 logger=self.logger
             )
             
@@ -310,6 +320,7 @@ class DatabaseController:
             self.logger.log_exception(e, f"getting products by status {status_column}={status_value}")
             return []
     
+
     def search_products(self, search_term: str, search_columns: List[str] = None) -> List[Tuple]:
         """Search products by term in specified columns"""
         try:
@@ -347,6 +358,7 @@ class DatabaseController:
             self.logger.log_exception(e, f"searching products with term: {search_term}")
             return []
     
+
     def get_database_info(self) -> Dict[str, Any]:
         """Get database information and statistics"""
         try:
@@ -397,6 +409,7 @@ class DatabaseController:
                 'last_updated': 0
             }
     
+
     def validate_database_integrity(self) -> Dict[str, bool]:
         """Validate database structure and integrity"""
         try:

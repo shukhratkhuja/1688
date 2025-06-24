@@ -54,9 +54,9 @@ class MainWindow(QMainWindow):
         try:
             self.scraping_controller = ScrapingController()
             self.db_controller = DatabaseController()
-            print("✅ Controllers initialized successfully")
+            self.logger.info("✅ Controllers initialized successfully")
         except Exception as e:
-            print(f"❌ Error initializing controllers: {e}")
+            self.logger.log_exception(e, f"❌ Error initializing controllers")
             # Show error dialog but continue
             QMessageBox.critical(
                 None, 
@@ -296,7 +296,7 @@ class MainWindow(QMainWindow):
                 self.log_viewer.refresh_logs()
                 
             except Exception as e:
-                print(f"Error refreshing data: {e}")
+                self.logger.log_exception(e, "Error refreshing data")
         else:
             # Refresh table even when not processing
             try:
@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
                         is_processing=False
                     )
             except Exception as e:
-                print(f"Error refreshing data: {e}")
+                self.logger.log_exception(e, "Error refreshing data")
     
     def refresh_product_data(self):
         """Refresh product data table"""
@@ -320,7 +320,8 @@ class MainWindow(QMainWindow):
                 products = self.db_controller.get_products_for_display()
                 self.product_table.update_data(products)
         except Exception as e:
-            print(f"Error refreshing product data: {e}")
+            self.logger.log_exception(e, "Error refreshing product data")
+
     
     def start_new_scraping(self):
         """Start new product scraping process"""
@@ -467,7 +468,8 @@ class MainWindow(QMainWindow):
             event.accept()
             
         except Exception as e:
-            print(f"Error during close: {e}")
+            self.logger.log_exception(e, "Error during close")
+
             # Force accept even with errors
             event.accept()
     

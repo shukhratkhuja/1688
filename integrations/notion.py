@@ -58,7 +58,7 @@ def get_urls():
     for resp in data:
         # print(resp)
         notion_product_id = resp["id"]
-        primary_supplier_url = resp["properties"]["PRIMARY SUPPLIER "]["url"]
+        primary_supplier_url = resp["properties"]["PRIMARY SUPPLIER"]["url"]
 
         data_collection.append((primary_supplier_url, notion_product_id))
     logger.info(f"❇️ Coming {len(data_collection)} new product_urls.")

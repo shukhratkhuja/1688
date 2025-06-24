@@ -22,7 +22,9 @@ from PyQt6.QtGui import QIcon
 
 # Endi import qilish
 from desktop_app.ui.main_window import MainWindow
+from utils.log_config import get_logger
 
+logger = get_logger("app", "app.log")
 
 class ScrapingApplication(QApplication):
     """Main application class with custom styling and configuration"""
@@ -61,7 +63,7 @@ def main():
         sys.exit(app.exec())
         
     except Exception as e:
-        print(f"❌ Application error: {e}")
+        logger.log_exception(f"❌ Application error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

@@ -19,7 +19,10 @@ desktop_dir = Path(__file__).parent
 project_root = desktop_dir.parent.parent
 sys.path.insert(0, str(desktop_dir))  # For desktop_app modules
 sys.path.insert(0, str(project_root)) # For original utils
+from utils.log_config import get_logger
 
+
+logger = get_logger("components", "app.log")
 
 from desktop_app.ui.styles import DraculaTheme
 
@@ -55,7 +58,7 @@ class ProductDataTable(QTableWidget):
         clipboard.setText(url_text)
         
         # Success message (optional)
-        print(f"URL copied: {url_text}")
+        logger.info(f"URL copied: {url_text}")
 
 
     def setup_table(self):
@@ -273,12 +276,13 @@ class ProductDataTable(QTableWidget):
             # Debug: birinchi 5 ta ID ni ko'rsatish
             if sorted_data:
                 first_5_ids = [get_numeric_id(p) for p in sorted_data[:5]]
-                print(f"Saralangan ID lar (birinchi 5 ta): {first_5_ids}")
+                # print(f"Saralangan ID lar (birinchi 5 ta): {first_5_ids}")
             
             return sorted_data
             
         except Exception as e:
-            print(f"Saralash xatosi: {e}")
+            logger.log_exception(e, "Saralash xatosi")
+            # print(f"Saralash xatosi: {e}")
             return products_data
     
     def _populate_table_data(self, sorted_products):
@@ -312,7 +316,8 @@ class ProductDataTable(QTableWidget):
                 self.setItem(row, 8, self.create_cell_item(self.format_datetime(created)))
                 
             except Exception as e:
-                print(f"Error populating row {row}: {e}")
+                logger.log_exception(e, f"Error populating row {row}")
+                # print(f"Error populating row {row}: {e}")
                 continue
 
 
@@ -507,18 +512,18 @@ class ProductDataTable(QTableWidget):
     # Additional utility methods
     def refresh_data(self, products_data):
         """Ma'lumotlarni yangilash - ANIQ DESCENDING ORDER bilan"""
-        print("🔄 Ma'lumotlar yangilanmoqda...")
+        # print("🔄 Ma'lumotlar yangilanmoqda...")
         self.update_data(products_data)
         self.verify_sort_order()
     
     def verify_sort_order(self):
         """Saralash tartibini tekshirish"""
         if self.rowCount() == 0:
-            print("📋 Jadval bo'sh")
+            # print("📋 Jadval bo'sh")
             return
         
-        print(f"📊 Jadval holati:")
-        print(f"   - Jami qatorlar: {self.rowCount()}")
+        # print(f"📊 Jadval holati:")
+        # print(f"   - Jami qatorlar: {self.rowCount()}")
         
         # Birinchi va oxirgi ID larni olish
         if self.rowCount() > 0:
@@ -529,22 +534,22 @@ class ProductDataTable(QTableWidget):
                 first_id = first_item.text()
                 last_id = last_item.text()
                 
-                print(f"   - Birinchi ID: {first_id}")
-                print(f"   - Oxirgi ID: {last_id}")
+                # print(f"   - Birinchi ID: {first_id}")
+                # print(f"   - Oxirgi ID: {last_id}")
                 
                 # Tartib tekshiruvi
                 try:
                     first_num = int(first_id)
                     last_num = int(last_id)
                     
-                    if first_num > last_num:
-                        print("   ✅ Tartib: DESCENDING (to'g'ri)")
-                    else:
-                        print("   ❌ Tartib: ASCENDING (noto'g'ri)")
-                        print("   🔧 Manual tuzatish kerak!")
+                    # if first_num > last_num:
+                    #     print("   ✅ Tartib: DESCENDING (to'g'ri)")
+                    # else:
+                    #     print("   ❌ Tartib: ASCENDING (noto'g'ri)")
+                    #     print("   🔧 Manual tuzatish kerak!")
                         
                 except:
-                    print("   ⚠️ ID larni tekshirib bo'lmadi")
+                    logger.warning("⚠️ ID larni tekshirib bo'lmadi")
         
         # Birinchi 10 ta ID ni ko'rsatish
         if self.rowCount() >= 10:
@@ -554,11 +559,11 @@ class ProductDataTable(QTableWidget):
                 if item:
                     first_10_ids.append(item.text())
             
-            print(f"   📝 Birinchi 10 ta ID: {' → '.join(first_10_ids)}")
+            # print(f"   📝 Birinchi 10 ta ID: {' → '.join(first_10_ids)}")
     
     def manual_descending_fix(self):
         """Agar saralash noto'g'ri bo'lsa, manual tuzatish"""
-        print("🔧 Manual DESCENDING saralash...")
+        logger.info("🔧 Manual DESCENDING saralash...")
         
         # Barcha ma'lumotlarni olish
         all_data = []
@@ -587,10 +592,10 @@ class ProductDataTable(QTableWidget):
                     self.setItem(row, col, item)
             
             self.setUpdatesEnabled(True)
-            print("✅ Manual saralash tugadi!")
+            logger.info("✅ Manual saralash tugadi!")
             
         except Exception as e:
-            print(f"❌ Manual saralash xatosi: {e}")
+            logger.info(f"❌ Manual saralash xatosi: {e}")
     
     def get_selected_product_id(self):
         """Tanlangan mahsulot ID sini olish"""
@@ -607,7 +612,7 @@ class ProductDataTable(QTableWidget):
         self.clearContents()
         self.setRowCount(0)
         self.setUpdatesEnabled(True)
-        print("🗑️ Jadval tozalandi")
+        logger.info("🗑️ Jadval tozalandi")
 
 class LogViewer(QTextEdit):
     """Real-time log viewer with auto-scroll and syntax highlighting"""
@@ -1178,7 +1183,7 @@ class RetakeDialog(QWidget):
         clipboard = QApplication.clipboard()
         clipboard.setText(url_text)
         
-        print(f"URL copied: {url_text}")
+        logger.info(f"URL copied: {url_text}")
 
     
     def setup_selection_table(self):

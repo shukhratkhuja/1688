@@ -59,7 +59,7 @@ def get_optimized_driver(headless=False):
 
     # options.add_argument(f'--proxy-server={entry}')
 
-    driver = uc.Chrome(options=options, version_main=135)
+    driver = uc.Chrome(options=options, version_main=137)
     logger.info("Get driver")
     return driver
 
