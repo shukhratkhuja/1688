@@ -1,5 +1,5 @@
 """
-Scraping Controller - Manages scraping processes and communicates with UI
+Scraping Controller - Fixed version with proper thread management
 """
 
 import sys
@@ -22,7 +22,7 @@ from desktop_app.utils.worker_threads import ScrapingWorkerThread, RetakeWorkerT
 
 
 class ScrapingController(QObject):
-    """Controller for managing scraping operations"""
+    """Controller for managing scraping operations with proper thread lifecycle"""
     
     # Signals for UI communication
     process_started = pyqtSignal(str)  # process_type
@@ -44,11 +44,12 @@ class ScrapingController(QObject):
             self.logger.error(f"Failed to initialize database controller: {e}")
             raise
         
-        # Process state
+        # Process state - CRUCIAL: proper initialization
         self._is_processing = False
         self._current_process = None
         self._worker_thread = None
         self._should_stop = False
+        self._stop_requested = False  # New flag for better control
         
         # Progress tracking
         self._progress_timer = QTimer()
@@ -57,17 +58,21 @@ class ScrapingController(QObject):
 
     def is_processing(self):
         """Check if any process is currently running"""
-        return self._is_processing
+        return self._is_processing and self._worker_thread is not None and self._worker_thread.isRunning()
     
 
     def start_new_scraping(self):
         """Start new product scraping process"""
-        if self._is_processing:
+        if self.is_processing():
             self.logger.warning("Cannot start new scraping: another process is running")
+            self.status_updated.emit("⚠️ Another process is already running")
             return False
         
         try:
             self.logger.info("Starting new product scraping process...")
+            
+            # IMPORTANT: Reset all flags before starting
+            self._reset_process_state()
             
             # Create and start worker thread
             self._worker_thread = ScrapingWorkerThread(
@@ -82,6 +87,7 @@ class ScrapingController(QObject):
             self._is_processing = True
             self._current_process = "New Product Scraping"
             self._should_stop = False
+            self._stop_requested = False
             
             self._worker_thread.start()
             self._progress_timer.start(3000)  # Update progress every 3 seconds
@@ -100,8 +106,9 @@ class ScrapingController(QObject):
 
     def start_retake_process(self, selected_products=None):
         """Start retake process for failed products"""
-        if self._is_processing:
+        if self.is_processing():
             self.logger.warning("Cannot start retake: another process is running")
+            self.status_updated.emit("⚠️ Another process is already running")
             return False
         
         try:
@@ -116,6 +123,9 @@ class ScrapingController(QObject):
             if not failed_products:
                 self.status_updated.emit("No failed products found for retake")
                 return False
+            
+            # IMPORTANT: Reset all flags before starting
+            self._reset_process_state()
             
             # Reset status for failed products
             self._reset_failed_products_status(failed_products)
@@ -134,6 +144,7 @@ class ScrapingController(QObject):
             self._is_processing = True
             self._current_process = "Product Retake"
             self._should_stop = False
+            self._stop_requested = False
             
             self._worker_thread.start()
             self._progress_timer.start(3000)  # Update progress every 3 seconds
@@ -150,40 +161,50 @@ class ScrapingController(QObject):
             return False
     
 
-    # ScrapingController da stop_process funksiyasini o'zgartiring:
-
     def stop_process(self):
-        """Stop current scraping process"""
-        if not self._is_processing:
-            return False
+        """Stop current scraping process - IMPROVED VERSION"""
+        if not self.is_processing():
+            self.logger.info("No process running to stop")
+            return True
         
         try:
             self.logger.info("Stopping current process...")
+            self._stop_requested = True
             self._should_stop = True
             
+            # Stop progress timer immediately
+            if self._progress_timer.isActive():
+                self._progress_timer.stop()
+            
             if self._worker_thread and self._worker_thread.isRunning():
-                # Graceful stop
+                # Signal the worker to stop gracefully
                 self._worker_thread.stop_process()
                 
-                # Wait for thread to finish (5 seconds max)
-                if self._worker_thread.wait(5000):
+                # Wait for thread to finish (maximum 10 seconds)
+                if self._worker_thread.wait(10000):  # 10 seconds
                     self.logger.info("Worker thread stopped gracefully")
                 else:
-                    self.logger.warning("Worker thread timeout, force stopping...")
-                    # Force stop emas, faqat reset
+                    self.logger.warning("Worker thread timeout, requesting interruption...")
                     self._worker_thread.requestInterruption()
-                    self._worker_thread.wait(2000)  # 2 sekund kutish
+                    
+                    # Wait additional 5 seconds for forced stop
+                    if self._worker_thread.wait(5000):
+                        self.logger.info("Worker thread stopped after interruption")
+                    else:
+                        self.logger.error("Worker thread failed to stop, will be cleaned up on exit")
             
-            # Reset state without force termination
+            # Force reset state regardless of thread status
             self._reset_process_state()
+            
             self.status_updated.emit("Process stopped by user")
+            self.process_finished.emit(self._current_process or "Unknown Process", False)
             self.logger.info("Process stopped successfully")
             
             return True
             
         except Exception as e:
             self.logger.error(f"Error stopping process: {e}")
-            # Xatolik bo'lsa ham state ni reset qiling
+            # Force reset even on error
             self._reset_process_state()
             self.error_occurred.emit(f"Process stopped with error: {str(e)}")
             return False
@@ -192,7 +213,8 @@ class ScrapingController(QObject):
     def _connect_worker_signals(self):
         """Connect worker thread signals to controller slots"""
         if self._worker_thread:
-            self._worker_thread.finished.connect(self._on_worker_finished)
+            # FIXED: Use process_completed instead of finished
+            self._worker_thread.process_completed.connect(self._on_worker_finished)
             self._worker_thread.progress_updated.connect(self._on_worker_progress)
             self._worker_thread.status_updated.connect(self._on_worker_status)
             self._worker_thread.error_occurred.connect(self._on_worker_error)
@@ -216,7 +238,7 @@ class ScrapingController(QObject):
 
     def _update_progress(self):
         """Update progress information from database"""
-        if not self._is_processing:
+        if not self._is_processing or self._stop_requested:
             return
         
         try:
@@ -247,12 +269,28 @@ class ScrapingController(QObject):
     
 
     def _reset_process_state(self):
-        """Reset controller state after process completion"""
+        """Reset controller state after process completion - IMPROVED"""
+        self.logger.info("Resetting process state...")
+        
+        # Stop timer first
+        if self._progress_timer.isActive():
+            self._progress_timer.stop()
+        
+        # Disconnect signals if worker exists
+        if self._worker_thread:
+            try:
+                self._worker_thread.disconnect()
+            except:
+                pass  # Ignore disconnection errors
+        
+        # Reset state variables
         self._is_processing = False
         self._current_process = None
         self._should_stop = False
+        self._stop_requested = False
         self._worker_thread = None
-        self._progress_timer.stop()
+        
+        self.logger.info("Process state reset complete")
     
 
     def _on_worker_finished(self, success):
@@ -270,12 +308,14 @@ class ScrapingController(QObject):
 
     def _on_worker_progress(self, current, total, message):
         """Handle progress updates from worker"""
-        self.progress_updated.emit(current, total, message)
+        if not self._stop_requested:
+            self.progress_updated.emit(current, total, message)
     
 
     def _on_worker_status(self, message):
         """Handle status updates from worker"""
-        self.status_updated.emit(message)
+        if not self._stop_requested:
+            self.status_updated.emit(message)
     
 
     def _on_worker_error(self, error_message):
@@ -289,21 +329,39 @@ class ScrapingController(QObject):
         return {
             'is_processing': self._is_processing,
             'process_type': self._current_process,
-            'should_stop': self._should_stop
+            'should_stop': self._should_stop,
+            'stop_requested': self._stop_requested,
+            'worker_running': self._worker_thread.isRunning() if self._worker_thread else False
         }
     
     
     def cleanup(self):
-        """Cleanup resources before destruction"""
+        """Cleanup resources before destruction - IMPROVED"""
         try:
-            if self._is_processing:
+            self.logger.info("Starting controller cleanup...")
+            
+            if self.is_processing():
+                self.logger.info("Stopping process during cleanup...")
                 self.stop_process()
             
-            self._progress_timer.stop()
+            # Stop timer
+            if self._progress_timer.isActive():
+                self._progress_timer.stop()
             
+            # Clean up worker thread
             if self._worker_thread:
-                self._worker_thread.quit()
-                self._worker_thread.wait()
+                if self._worker_thread.isRunning():
+                    self._worker_thread.requestInterruption()
+                    self._worker_thread.wait(3000)  # Wait up to 3 seconds
+                
+                try:
+                    self._worker_thread.disconnect()
+                except:
+                    pass
+                
+                self._worker_thread = None
+            
+            self.logger.info("Controller cleanup completed")
             
         except Exception as e:
             self.logger.warning(f"Error during cleanup: {e}")

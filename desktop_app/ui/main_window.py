@@ -1,5 +1,5 @@
 """
-Main Window UI with modern dark theme and professional layout
+Main Window UI with improved thread management and button states
 """
 
 import sys
@@ -28,9 +28,8 @@ from desktop_app.controllers.scraping_controller import ScrapingController
 from desktop_app.controllers.database_controller import DatabaseController
 
 
-
 class MainWindow(QMainWindow):
-    """Main application window with professional dark theme"""
+    """Main application window with improved state management"""
     
     # Custom signals
     scraping_started = pyqtSignal()
@@ -66,18 +65,26 @@ class MainWindow(QMainWindow):
             self.scraping_controller = None
             self.db_controller = None
         
+        # UI state tracking - IMPORTANT
+        self._buttons_enabled = True
+        self._current_process = None
+        
         # UI refresh timer
         self.refresh_timer = QTimer()
         self.refresh_timer.timeout.connect(self.refresh_data)
-        self.refresh_timer.start(10000)  # Refresh every 5 seconds
+        self.refresh_timer.start(5000)  # Refresh every 5 seconds
+        
+        # Status check timer - for button state management
+        self.status_timer = QTimer()
+        self.status_timer.timeout.connect(self.check_process_status)
+        self.status_timer.start(1000)  # Check every second
         
         self.setup_ui()
         self.connect_signals()
         self.load_initial_data()
     
     def setup_ui(self):
-
-        # Ekran o‘lchamini olish
+        # Ekran o'lchamini olish
         screen = QGuiApplication.primaryScreen()
         size = screen.availableGeometry()
 
@@ -274,44 +281,53 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.show_error_message("Failed to load initial data", str(e))
     
-    def refresh_data(self):
-        """Refresh data periodically"""
-        if self.scraping_controller and self.scraping_controller.is_processing():
-            try:
-                # Refresh table data
-                self.refresh_product_data()
+    def check_process_status(self):
+        """Check process status and update button states - NEW METHOD"""
+        try:
+            if self.scraping_controller:
+                is_processing = self.scraping_controller.is_processing()
+                
+                # Update button states based on processing status
+                self.take_new_btn.setEnabled(not is_processing)
+                self.retake_btn.setEnabled(not is_processing)
+                self.stop_btn.setEnabled(is_processing)
                 
                 # Update status panel
                 if self.db_controller:
                     stats = self.db_controller.get_processing_stats()
-                    # Map stats to expected parameters
                     self.status_panel.update_status(
                         total_products=stats.get('total_products', 0),
                         failed_products=stats.get('failed', 0),
                         scraped_products=stats.get('scraped', 0),
-                        is_processing=stats.get('is_processing', False)
+                        is_processing=is_processing
                     )
                 
-                # Refresh logs
-                self.log_viewer.refresh_logs()
+        except Exception as e:
+            self.logger.warning(f"Error checking process status: {e}")
+    
+    def refresh_data(self):
+        """Refresh data periodically"""
+        try:
+            # Always refresh table data
+            self.refresh_product_data()
+            
+            # Update status panel
+            if self.db_controller:
+                stats = self.db_controller.get_processing_stats()
+                is_processing = self.scraping_controller.is_processing() if self.scraping_controller else False
                 
-            except Exception as e:
-                self.logger.log_exception(e, "Error refreshing data")
-        else:
-            # Refresh table even when not processing
-            try:
-                self.refresh_product_data()
-                
-                if self.db_controller:
-                    stats = self.db_controller.get_processing_stats()
-                    self.status_panel.update_status(
-                        total_products=stats.get('total_products', 0),
-                        failed_products=stats.get('failed', 0),
-                        scraped_products=stats.get('scraped', 0),
-                        is_processing=False
-                    )
-            except Exception as e:
-                self.logger.log_exception(e, "Error refreshing data")
+                self.status_panel.update_status(
+                    total_products=stats.get('total_products', 0),
+                    failed_products=stats.get('failed', 0),
+                    scraped_products=stats.get('scraped', 0),
+                    is_processing=is_processing
+                )
+            
+            # Refresh logs
+            self.log_viewer.refresh_logs()
+            
+        except Exception as e:
+            self.logger.log_exception(e, "Error refreshing data")
     
     def refresh_product_data(self):
         """Refresh product data table"""
@@ -322,11 +338,15 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger.log_exception(e, "Error refreshing product data")
 
-    
     def start_new_scraping(self):
-        """Start new product scraping process"""
+        """Start new product scraping process - IMPROVED"""
         if not self.scraping_controller:
             self.show_error_message("Controller Error", "Scraping controller not available")
+            return
+        
+        # Double-check if already processing
+        if self.scraping_controller.is_processing():
+            self.show_error_message("Process Running", "Another process is already running. Please wait for it to complete or stop it first.")
             return
             
         reply = QMessageBox.question(
@@ -340,12 +360,19 @@ class MainWindow(QMainWindow):
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            self.scraping_controller.start_new_scraping()
+            success = self.scraping_controller.start_new_scraping()
+            if not success:
+                self.show_error_message("Start Failed", "Failed to start the scraping process. Check logs for details.")
     
     def start_retake_process(self):
-        """Start retake process for failed products"""
+        """Start retake process for failed products - IMPROVED"""
         if not self.scraping_controller or not self.db_controller:
             self.show_error_message("Controller Error", "Controllers not available")
+            return
+        
+        # Double-check if already processing
+        if self.scraping_controller.is_processing():
+            self.show_error_message("Process Running", "Another process is already running. Please wait for it to complete or stop it first.")
             return
             
         failed_products = self.db_controller.get_failed_products()
@@ -364,8 +391,12 @@ class MainWindow(QMainWindow):
         retake_dialog.show()
     
     def stop_current_process(self):
-        """Stop current scraping process"""
+        """Stop current scraping process - IMPROVED"""
         if not self.scraping_controller:
+            return
+        
+        if not self.scraping_controller.is_processing():
+            self.status_bar.showMessage("No process running to stop")
             return
             
         reply = QMessageBox.question(
@@ -378,40 +409,92 @@ class MainWindow(QMainWindow):
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            self.scraping_controller.stop_process()
+            self.logger.info("User requested to stop current process")
+            
+            # Immediately disable stop button to prevent multiple clicks
+            self.stop_btn.setEnabled(False)
+            self.stop_btn.setText("Stopping...")
+            
+            # Update status
+            self.status_bar.showMessage("⏹️ Stopping process...")
+            
+            # Stop the process
+            success = self.scraping_controller.stop_process()
+            
+            if success:
+                self.logger.info("Process stop request completed")
+            else:
+                self.logger.warning("Process stop request failed")
+                self.show_error_message("Stop Failed", "Failed to stop the process cleanly. It may still be running in the background.")
     
     def on_process_started(self, process_type):
-        """Handle process started signal"""
+        """Handle process started signal - IMPROVED"""
+        self.logger.info(f"Process started: {process_type}")
+        
+        # Update button states
         self.take_new_btn.setEnabled(False)
         self.retake_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
-        self.progress_bar.setVisible(True)
+        self.stop_btn.setText("Stop Process")
         
+        # Show progress bar
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+        
+        # Update status
         self.status_bar.showMessage(f"🔄 {process_type} process started...")
         self.status_panel.set_processing(True)
+        
+        # Store current process
+        self._current_process = process_type
     
     def on_process_finished(self, process_type, success):
-        """Handle process finished signal"""
+        """Handle process finished signal - IMPROVED"""
+        self.logger.info(f"Process finished: {process_type}, Success: {success}")
+        
+        # Reset button states
         self.take_new_btn.setEnabled(True)
         self.retake_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
-        self.progress_bar.setVisible(False)
+        self.stop_btn.setText("Stop Process")
         
+        # Hide progress bar
+        self.progress_bar.setVisible(False)
+        self.progress_bar.setValue(0)
+        
+        # Update status
         status_icon = "✅" if success else "❌"
-        status_text = "completed successfully" if success else "failed"
+        status_text = "completed successfully" if success else "failed or was stopped"
         
         self.status_bar.showMessage(f"{status_icon} {process_type} process {status_text}")
         self.status_panel.set_processing(False)
         
+        # Clear current process
+        self._current_process = None
+        
         # Refresh data after process completion
         self.refresh_product_data()
+        
+        # Show completion message
+        if success:
+            QMessageBox.information(
+                self,
+                "Process Complete",
+                f"{process_type} process completed successfully!"
+            )
+        else:
+            QMessageBox.warning(
+                self,
+                "Process Stopped",
+                f"{process_type} process was stopped or failed. Check logs for details."
+            )
     
     def on_progress_updated(self, current, total, message):
         """Handle progress update signal"""
         if total > 0:
             progress = int((current / total) * 100)
             self.progress_bar.setValue(progress)
-            self.progress_bar.setFormat(f"{message} ({current}/{total})")
+            self.progress_bar.setFormat(f"{message} ({current}/{total}) - {progress}%")
         else:
             self.progress_bar.setFormat(message)
     
@@ -421,6 +504,7 @@ class MainWindow(QMainWindow):
     
     def on_error_occurred(self, error_message):
         """Handle error signal"""
+        self.logger.error(f"Process error: {error_message}")
         self.show_error_message("Process Error", error_message)
     
     def show_error_message(self, title, message):
@@ -433,9 +517,14 @@ class MainWindow(QMainWindow):
         )
     
     def closeEvent(self, event):
-        """Handle application close event"""
+        """Handle application close event - IMPROVED"""
         try:
-            if self.scraping_controller and self.scraping_controller.is_processing():
+            # Check if process is running
+            is_processing = False
+            if self.scraping_controller:
+                is_processing = self.scraping_controller.is_processing()
+            
+            if is_processing:
                 reply = QMessageBox.question(
                     self,
                     "Close Application",
@@ -449,19 +538,24 @@ class MainWindow(QMainWindow):
                     event.ignore()
                     return
                 
-                # Gracefully stop the process
-                self.scraping_controller.stop_process()
+                # Stop the process
+                self.logger.info("Stopping process before application close...")
+                if self.scraping_controller:
+                    self.scraping_controller.stop_process()
                 
-                # Wait a bit for cleanup
+                # Give some time for cleanup
                 import time
-                time.sleep(1)
+                time.sleep(2)
             
-            # Stop the refresh timer
+            # Stop timers
             if hasattr(self, 'refresh_timer'):
                 self.refresh_timer.stop()
             
+            if hasattr(self, 'status_timer'):
+                self.status_timer.stop()
+            
             # Cleanup controllers
-            if hasattr(self, 'scraping_controller'):
+            if hasattr(self, 'scraping_controller') and self.scraping_controller:
                 self.scraping_controller.cleanup()
             
             self.logger.info("Application closing gracefully")
@@ -469,13 +563,17 @@ class MainWindow(QMainWindow):
             
         except Exception as e:
             self.logger.log_exception(e, "Error during close")
-
             # Force accept even with errors
             event.accept()
     
     def _start_retake_for_selected(self, selected_products):
         """Start retake process for selected products"""
         if not selected_products:
+            return
+        
+        # Double-check if already processing
+        if self.scraping_controller.is_processing():
+            self.show_error_message("Process Running", "Another process is already running.")
             return
             
         reply = QMessageBox.question(
@@ -490,4 +588,6 @@ class MainWindow(QMainWindow):
         
         if reply == QMessageBox.StandardButton.Yes:
             # Start retake for selected products
-            self.scraping_controller.start_retake_process(selected_products)
+            success = self.scraping_controller.start_retake_process(selected_products)
+            if not success:
+                self.show_error_message("Start Failed", "Failed to start the retake process. Check logs for details.")
